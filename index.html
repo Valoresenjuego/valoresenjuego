@@ -527,8 +527,8 @@ document.getElementById('formNuevoSocio').addEventListener('submit', async (e) =
     const numSocioVal = parseInt(document.getElementById('nuevo-num-socio').value);
     const dniVal = document.getElementById('nuevo-dni').value;
 
-    // 1. Insertamos en la tabla 'socios' (pública)
-    const { error: errorSocio } = await supabaseClient
+    // 1. Insertamos en 'socios' y pedimos que nos devuelva el registro creado (.select())
+    const { data: nuevoSocioCreado, error: errorSocio } = await supabaseClient
         .from('socios')
         .insert([{
             num_socio: numSocioVal,
@@ -539,7 +539,8 @@ document.getElementById('formNuevoSocio').addEventListener('submit', async (e) =
             fecha_alta: document.getElementById('nuevo-fecha-alta').value,
             cargo: document.getElementById('nuevo-cargo').value,
             estado: 'ACTIVO'
-        }]);
+        }])
+        .select(); // IMPORTANTE: Esto nos devuelve el socio con su socio_id generado
 
     if (errorSocio) {
         alert("Error en tabla socios: " + errorSocio.message);
@@ -548,15 +549,18 @@ document.getElementById('formNuevoSocio').addEventListener('submit', async (e) =
         return;
     }
 
-    // 2. Insertamos en 'datos_privados' usando tus atributos exactos
-    // Dejamos socio_id vacío si vas a usar num_socio como vínculo principal
+    // Obtenemos el ID interno que acaba de generar la base de datos
+    const idInterno = nuevoSocioCreado[0].id;
+
+    // 2. Insertamos en 'datos_privados' enviando TODOS los campos obligatorios
     const { error: errorPrivado } = await supabaseClient
         .from('datos_privados')
         .insert([{
-            num_socio: numSocioVal, // Aquí guardamos el número como pediste
-            dni: dniVal,            // Atributo dni
-            iban: '',               // Atributo iban (vacío de momento)
-            notas_seguridad: ''     // Atributo notas_seguridad (vacío)
+            socio_id: idInterno,     // Cumplimos con la restricción Not Null
+            num_socio: numSocioVal,  // Tu campo de referencia
+            dni: dniVal,
+            iban: '',               
+            notas_seguridad: ''     
         }]);
 
     if (errorPrivado) {
