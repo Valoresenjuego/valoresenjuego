@@ -571,7 +571,11 @@ document.getElementById('formRegistrarPago').addEventListener('submit', async (e
     const btn = document.getElementById('btn-confirmar-pago');
     const numSocio = document.getElementById('pago-num-socio').value;
     const nombreSocio = document.getElementById('pago-socio-nombre').innerText;
-    const periodo = document.getElementById('pago-periodo').value;
+    
+    // CAPTURAMOS EL PERIODO Y LO PASAMOS A MAYÚSCULAS AQUÍ
+    const periodoRaw = document.getElementById('pago-periodo').value;
+    const periodoMayusculas = periodoRaw.toUpperCase(); 
+    
     const importe = document.getElementById('pago-importe').value;
     const enviarEmail = document.getElementById('check-enviar-email').checked;
 
@@ -579,12 +583,12 @@ document.getElementById('formRegistrarPago').addEventListener('submit', async (e
     btn.disabled = true;
 
     try {
-        // 1. Registro en Supabase
+        // 1. Registro en Supabase (Usamos periodoMayusculas)
         const { error: errorPago } = await supabaseClient
             .from('pagos')
             .insert([{ 
                 num_socio: parseInt(numSocio), 
-                periodo: periodo, 
+                periodo: periodoMayusculas, 
                 importe: parseFloat(importe),
                 fecha_pago: new Date().toISOString()
             }]);
@@ -593,15 +597,14 @@ document.getElementById('formRegistrarPago').addEventListener('submit', async (e
 
         // 2. Lógica de envío de email
         if (enviarEmail) {
-            // Buscamos al socio para obtener su correo de la base de datos
             const socio = listaSocios.find(s => s.num_socio == numSocio);
             
             if (socio && socio.email) {
                 const templateParams = {
                     nombre_socio: nombreSocio,
                     importe: importe + "€",
-                    mes_actual: periodo,
-                    email_socio: socio.email  // <--- Cambiado para coincidir con tu EmailJS
+                    mes_actual: periodoMayusculas, // También irá en mayúsculas en el email
+                    email_socio: socio.email 
                 };
 
                 await emailjs.send(
@@ -609,18 +612,14 @@ document.getElementById('formRegistrarPago').addEventListener('submit', async (e
                     "template_skp3ab3", 
                     templateParams
                 );
-                console.log("Email enviado a: " + socio.email);
-            } else {
-                alert("Pago guardado, pero no se pudo enviar email (el socio no tiene correo).");
             }
         }
 
-        alert("¡Pago registrado y confirmación enviada!");
+        alert("Pago registrado como " + periodoMayusculas);
         cerrarModal('modalPago');
         await inicializarApp(); 
 
     } catch (err) {
-        console.error("Error:", err);
         alert("Error: " + err.message);
     } finally {
         btn.innerText = "Confirmar Pago";
