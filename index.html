@@ -313,7 +313,65 @@
         });
         renderizarTabla(impagados);
     }
+async function enviarAvisoCuota() {
+    // 1. Confirmación de seguridad
+    if (!confirm("¿Estás seguro de que deseas enviar el aviso de cuota a TODOS los socios activos?")) return;
 
+    const btn = event.currentTarget; // Captura el botón que hizo clic
+    const textoOriginal = btn.innerHTML;
+    
+    // 2. Obtener el mes actual en MAYÚSCULAS (ej: MAYO 2026)
+    const meses = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
+    const hoy = new Date();
+    const mesActual = `${meses[hoy.getMonth()]} ${hoy.getFullYear()}`;
+
+    // 3. Filtrar solo socios activos y que tengan email
+    const sociosADifundir = listaSocios.filter(s => s.estado === 'ACTIVO' && s.email);
+
+    if (sociosADifundir.length === 0) {
+        alert("No hay socios activos con correo electrónico registrado.");
+        return;
+    }
+
+    // 4. Bloquear botón y mostrar progreso
+    btn.disabled = true;
+    btn.classList.replace('bg-rose-50', 'bg-slate-400');
+    
+    let enviados = 0;
+    let errores = 0;
+
+    for (const socio of sociosADifundir) {
+        try {
+            btn.innerHTML = `Enviando ${enviados + 1}/${sociosADifundir.length}...`;
+
+            const templateParams = {
+                to_name: socio.nombre,
+                email_socio: socio.email, // Asegúrate que en EmailJS el "To Email" sea {{email_socio}}
+                mes_actual: mesActual
+            };
+
+            await emailjs.send(
+                "service_kyboqyj", 
+                "template_r6bmf2v", 
+                templateParams
+            );
+
+            enviados++;
+            
+            // Pequeña pausa de 300ms entre correos para evitar saturación
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+        } catch (error) {
+            console.error(`Error enviando a ${socio.email}:`, error);
+            errores++;
+        }
+    }
+
+    // 5. Finalizar
+    alert(`Proceso terminado.\n✅ Enviados: ${enviados}\n❌ Errores: ${errores}`);
+    btn.disabled = false;
+    btn.innerHTML = textoOriginal;
+}
     // --- FUNCIONES DE EDICIÓN Y FICHA ---
 
     async function abrirFichaSocio(id) {
