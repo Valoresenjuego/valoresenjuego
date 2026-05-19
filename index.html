@@ -314,39 +314,34 @@
         renderizarTabla(impagados);
     }
 async function enviarAvisoCuota() {
-    // 1. Confirmación de seguridad
-    if (!confirm("¿Estás seguro de que deseas enviar el aviso de cuota a TODOS los socios activos?")) return;
+    // LISTA DE PRUEBA: Solo estos 3 correos
+    const correosPrueba = [
+        { nombre: "Alberto Test", email: "albertoherreria@gmail.com" },
+        { nombre: "Admin Valores", email: "admin@valoresenjuego.com" },
+        { nombre: "Info Valores", email: "info@valoresenjuego.com" }
+    ];
 
-    const btn = event.currentTarget; // Captura el botón que hizo clic
+    if (!confirm("MODO PRUEBA: ¿Enviar aviso solo a los 3 correos de prueba?")) return;
+
+    const btn = event.currentTarget;
     const textoOriginal = btn.innerHTML;
     
-    // 2. Obtener el mes actual en MAYÚSCULAS (ej: MAYO 2026)
     const meses = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
     const hoy = new Date();
     const mesActual = `${meses[hoy.getMonth()]} ${hoy.getFullYear()}`;
 
-    // 3. Filtrar solo socios activos y que tengan email
-    const sociosADifundir = listaSocios.filter(s => s.estado === 'ACTIVO' && s.email);
-
-    if (sociosADifundir.length === 0) {
-        alert("No hay socios activos con correo electrónico registrado.");
-        return;
-    }
-
-    // 4. Bloquear botón y mostrar progreso
     btn.disabled = true;
-    btn.classList.replace('bg-rose-50', 'bg-slate-400');
+    btn.classList.replace('bg-rose-500', 'bg-slate-400');
     
     let enviados = 0;
-    let errores = 0;
 
-    for (const socio of sociosADifundir) {
+    for (const socio of correosPrueba) {
         try {
-            btn.innerHTML = `Enviando ${enviados + 1}/${sociosADifundir.length}...`;
+            btn.innerHTML = `Probando ${enviados + 1}/3...`;
 
             const templateParams = {
                 to_name: socio.nombre,
-                email_socio: socio.email, // Asegúrate que en EmailJS el "To Email" sea {{email_socio}}
+                email_socio: socio.email, // Tu variable de EmailJS
                 mes_actual: mesActual
             };
 
@@ -357,20 +352,18 @@ async function enviarAvisoCuota() {
             );
 
             enviados++;
-            
-            // Pequeña pausa de 300ms entre correos para evitar saturación
-            await new Promise(resolve => setTimeout(resolve, 300));
+            console.log("Prueba enviada a: " + socio.email);
+            await new Promise(resolve => setTimeout(resolve, 500));
 
         } catch (error) {
-            console.error(`Error enviando a ${socio.email}:`, error);
-            errores++;
+            console.error(`Error en prueba a ${socio.email}:`, error);
         }
     }
 
-    // 5. Finalizar
-    alert(`Proceso terminado.\n✅ Enviados: ${enviados}\n❌ Errores: ${errores}`);
+    alert(`Prueba finalizada. Se enviaron ${enviados} correos.`);
     btn.disabled = false;
     btn.innerHTML = textoOriginal;
+    btn.classList.replace('bg-slate-400', 'bg-rose-500');
 }
     // --- FUNCIONES DE EDICIÓN Y FICHA ---
 
