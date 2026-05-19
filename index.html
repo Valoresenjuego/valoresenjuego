@@ -68,7 +68,33 @@
         </form>
     </div>
 </div>
+<div id="modalDifusion" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-[60] items-center justify-center p-4">
+    <div class="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="font-black uppercase text-xs tracking-widest text-slate-400">Aviso Colectivo</h2>
+            <button onclick="cerrarModal('modalDifusion')" class="bg-slate-100 w-8 h-8 rounded-full text-slate-400">&times;</button>
+        </div>
+        
+        <div class="text-center mb-6">
+            <div class="bg-rose-50 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v10a2 2 0 002 2z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <p class="text-slate-900 font-bold text-lg">¿Qué mes vamos a cobrar?</p>
+            <p class="text-slate-400 text-xs">Se enviará un email personalizado a todos los socios activos.</p>
+        </div>
 
+        <div class="space-y-4">
+            <div class="space-y-1">
+                <label class="text-[9px] font-black uppercase text-slate-400 ml-2">Selecciona el periodo</label>
+                <select id="difusion-periodo" class="w-full p-5 bg-slate-50 rounded-2xl font-bold text-center border-none outline-none appearance-none"></select>
+            </div>
+            
+            <button onclick="ejecutarEnvioMasivo()" id="btn-lanzar-difusion" class="w-full py-5 bg-rose-500 text-white font-black rounded-[1.5rem] uppercase text-xs tracking-widest shadow-lg shadow-rose-200">
+                Lanzar Avisos ahora
+            </button>
+        </div>
+    </div>
+</div>
 <nav class="bg-white border-b border-slate-100 sticky top-0 z-40">
     <div class="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center">
         <div class="flex items-center gap-2">
@@ -313,101 +339,91 @@
         });
         renderizarTabla(impagados);
     }
-async function enviarAvisoCuota() {
-    // 1. DEFINICIÓN DE CORREOS DE PRUEBA
-    // IMPORTANTE: El "num_socio" debe existir en tu base de datos para que encuentre sus pagos
-    const correosPrueba = [
-        { nombre: "Alberto Herrería", email: "albertoherreria@gmail.com", num_socio: 1 }, 
-        { nombre: "Admin Valores", email: "admin@valoresenjuego.com", num_socio: 2 },
-        { nombre: "Info Valores", email: "info@valoresenjuego.com", num_socio: 3 }
-    ];
-
-    if (!confirm("MODO PRUEBA: ¿Enviar aviso personalizado a los 3 correos de prueba?")) return;
-
-    const btn = document.querySelector('button[onclick="enviarAvisoCuota()"]');
-    const textoOriginal = btn ? btn.innerHTML : "Enviar Ahora";
+// Esta función ahora solo abre el modal y prepara los meses
+function enviarAvisoCuota() {
+    const s = document.getElementById('difusion-periodo');
+    const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const hoy = new Date();
+    s.innerHTML = "";
     
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = "Calculando periodos...";
+    // Generamos opciones: mes pasado, actual y los 2 siguientes
+    for (let i = -1; i < 3; i++) {
+        let d = new Date(hoy.getFullYear(), hoy.getMonth() + i, 1);
+        let txt = `${meses[d.getMonth()]} ${d.getFullYear()}`.toUpperCase();
+        s.add(new Option(txt, txt));
+    }
+    s.selectedIndex = 1; // Por defecto el mes actual
+    
+    mostrarModal('modalDifusion');
+}
+
+// Esta es la que realmente envía los correos
+// Esta función ahora solo abre el modal y prepara los meses
+function enviarAvisoCuota() {
+    const s = document.getElementById('difusion-periodo');
+    const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const hoy = new Date();
+    s.innerHTML = "";
+    
+    // Generamos opciones: mes pasado, actual y los 2 siguientes
+    for (let i = -1; i < 3; i++) {
+        let d = new Date(hoy.getFullYear(), hoy.getMonth() + i, 1);
+        let txt = `${meses[d.getMonth()]} ${d.getFullYear()}`.toUpperCase();
+        s.add(new Option(txt, txt));
+    }
+    s.selectedIndex = 1; // Por defecto el mes actual
+    
+    mostrarModal('modalDifusion');
+}
+
+// Esta es la que realmente envía los correos
+async function ejecutarEnvioMasivo() {
+    const periodoSeleccionado = document.getElementById('difusion-periodo').value;
+    
+    if (!confirm(`¿Confirmas que quieres enviar el aviso para ${periodoSeleccionado} a todos los socios activos?`)) return;
+
+    const btn = document.getElementById('btn-lanzar-difusion');
+    const textoOriginal = btn.innerHTML;
+    
+    // Filtrar socios activos
+    const sociosADifundir = listaSocios.filter(s => s.estado === 'ACTIVO' && s.email);
+
+    if (sociosADifundir.length === 0) {
+        alert("No hay socios activos con email.");
+        return;
     }
 
-    const mesesOpciones = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+    btn.disabled = true;
+    btn.innerHTML = "Iniciando...";
+    
     let enviados = 0;
     let errores = 0;
 
-    console.log("Iniciando prueba de envío personalizado...");
-
-    for (const socio of correosPrueba) {
+    for (const socio of sociosADifundir) {
         try {
-            // --- LÓGICA DE CÁLCULO: ÚLTIMO PAGO + 1 ---
-            
-            // Filtramos los pagos reales que tenemos cargados en 'listaPagos' para este socio
-            const pagosSocio = listaPagos.filter(p => p.num_socio === socio.num_socio);
-            
-            let mesSiguienteTexto = "";
+            btn.innerHTML = `Enviando ${enviados + 1}/${sociosADifundir.length}...`;
 
-            if (pagosSocio.length > 0) {
-                // Ordenamos para asegurar que el último es el más reciente
-                // (Si tu lista ya viene ordenada de Supabase, tomamos el último)
-                const ultimoPago = pagosSocio[pagosSocio.length - 1]; 
-                
-                // Suponiendo formato "MAYO 2026"
-                const partes = ultimoPago.periodo.toLowerCase().split(' ');
-                const mesNombre = partes[0];
-                const anio = parseInt(partes[1]);
-
-                const indiceMesActual = mesesOpciones.indexOf(mesNombre);
-                
-                let nuevoIndice = indiceMesActual + 1;
-                let nuevoAnio = anio;
-
-                if (nuevoIndice > 11) { // Si era diciembre, saltar a enero del año siguiente
-                    nuevoIndice = 0;
-                    nuevoAnio++;
-                }
-                mesSiguienteTexto = `${mesesOpciones[nuevoIndice]} ${nuevoAnio}`.toUpperCase();
-            } else {
-                // Si el socio de prueba no tiene pagos en la base de datos, usamos el mes actual
-                const hoy = new Date();
-                mesSiguienteTexto = `${mesesOpciones[hoy.getMonth()]} ${hoy.getFullYear()}`.toUpperCase();
-            }
-
-            console.log(`Para ${socio.nombre} (Socio ${socio.num_socio}), el mes calculado es: ${mesSiguienteTexto}`);
-
-            // --- ENVÍO CON EMAILJS ---
-            
             const templateParams = {
                 to_name: socio.nombre,
                 email_socio: socio.email,
-                mes_actual: mesSiguienteTexto
+                mes_actual: periodoSeleccionado // El que elegiste en el select
             };
 
-            const response = await emailjs.send(
-                "service_kyboqyj", 
-                "template_r6bmf2v", 
-                templateParams
-            );
-
-            if (response.status === 200) {
-                enviados++;
-                console.log(`✅ Enviado a ${socio.email}`);
-            }
-
-            await new Promise(resolve => setTimeout(resolve, 800));
+            await emailjs.send("service_kyboqyj", "template_r6bmf2v", templateParams);
+            enviados++;
+            
+            await new Promise(resolve => setTimeout(resolve, 400)); // Pausa anti-bloqueo
 
         } catch (error) {
-            console.error(`❌ Error con ${socio.email}:`, error);
+            console.error("Error:", error);
             errores++;
         }
     }
 
-    alert(`Prueba terminada.\n✅ Enviados: ${enviados}\n❌ Errores: ${errores}`);
-    
-    if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = textoOriginal;
-    }
+    alert(`Proceso terminado.\n✅ Enviados: ${enviados}\n❌ Errores: ${errores}`);
+    btn.disabled = false;
+    btn.innerHTML = textoOriginal;
+    cerrarModal('modalDifusion');
 }
     // --- FUNCIONES DE EDICIÓN Y FICHA ---
 
