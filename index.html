@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VALORES EN JUEGOS - Gestión Integral</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        
+        /* Estilos para transformar tabla en tarjetas en móvil */
+        @media (max-width: 768px) {
+            thead { display: none; }
+            tr { 
+                display: block; 
+                margin-bottom: 1rem; 
+                border: 1px solid #e2e8f0; 
+                border-radius: 1.5rem; 
+                background: white;
+                padding: 1rem;
+            }
+            td { 
+                display: flex; 
+                justify-content: space-between; 
+                align-items: center; 
+                padding: 0.5rem 0 !important;
+                border: none !important;
+                width: 100% !important;
+                text-align: right !important;
+            }
+            td::before {
+                content: attr(data-label);
+                font-weight: 800;
+                text-transform: uppercase;
+                font-size: 0.65rem;
+                color: #94a3b8;
+                text-align: left;
+            }
+            .acciones-cell { justify-content: center !important; gap: 1rem; margin-top: 0.5rem; border-top: 1px solid #f1f5f9 !important; padding-top: 1rem !important; }
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        .modal-active { display: flex !important; }
+        .filter-btn-active { background-color: white !important; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 0.75rem; }
+    </style>
+</head>
+<body class="text-slate-900">
+
+<div id="seccion-login" class="fixed inset-0 bg-slate-900 z-[100] flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl">
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl">
+                <span class="text-white font-black text-4xl">V</span>
+            </div>
+            <h2 class="text-2xl font-black uppercase tracking-tight">Acceso Privado</h2>
+            <p class="text-slate-400 text-xs font-bold uppercase mt-2">ValoresEnJuego Panel</p>
+        </div>
+        <form id="formLogin" class="space-y-4">
+            <input type="email" id="email" placeholder="Email" class="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold focus:ring-2 focus:ring-slate-900 transition-all" required>
+            <input type="password" id="password" placeholder="Contraseña" class="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold focus:ring-2 focus:ring-slate-900 transition-all" required>
+            <button type="submit" id="btn-entrar" class="w-full py-5 bg-slate-900 text-white font-black rounded-2xl uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg">
+                Entrar ahora
+            </button>
+        </form>
+    </div>
+</div>
+
+<nav class="bg-white border-b border-slate-100 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center shadow-sm">
+                <span class="text-white font-black text-xl">V</span>
+            </div>
+            <h1 class="text-sm font-black uppercase tracking-tighter hidden sm:block">VALORES<span class="text-slate-400">ENJUEGO</span></h1>
+        </div>
+        
+        <div class="flex gap-4 overflow-x-auto no-scrollbar items-center px-2">
+            <a href="index.html" class="text-[10px] font-black uppercase tracking-widest text-slate-900 border-b-2 border-slate-900 pb-1 whitespace-nowrap">Socios</a>
+            <a href="pagos.html" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 whitespace-nowrap">Pagos</a>
+            <a href="bar.html" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 whitespace-nowrap">Bar</a>
+            <a href="gastos.html" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-rose-600 whitespace-nowrap">Gastos</a>
+        </div>
+
+        <button onclick="abrirModalNuevoSocio()" class="bg-slate-900 text-white p-2 rounded-xl sm:px-4 sm:py-2 text-[10px] font-black uppercase shadow-md active:scale-95 transition-all">
+            <span class="sm:hidden text-lg">+</span>
+            <span class="hidden sm:inline">+ Nuevo Socio</span>
+        </button>
+    </div>
+</nav>
+
+<div class="max-w-7xl mx-auto p-4">
+    <div class="bg-slate-900 rounded-[2rem] p-6 shadow-xl flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left">
+        <div>
+            <h2 class="text-white font-black uppercase text-lg italic tracking-tighter">Aviso de Cuotas</h2>
+            <p class="text-slate-400 text-[10px] font-bold uppercase">Enviar recordatorio mensual</p>
+        </div>
+        <button onclick="enviarAvisoCuota()" class="w-full md:w-auto bg-rose-500 text-white px-6 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-rose-600 active:scale-95 transition-all flex justify-center items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v10a2 2 0 002 2z" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Enviar Ahora
+        </button>
+    </div>
+</div>
+
+<header class="max-w-7xl mx-auto px-4 pb-4">
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
+            <p class="text-[8px] font-black uppercase text-slate-400 mb-1">Socios</p>
+            <h2 id="stat-socios" class="text-xl font-black text-slate-900">0</h2>
+        </div>
+        <div class="bg-rose-50 p-4 rounded-3xl border border-rose-100 shadow-sm">
+            <p class="text-[8px] font-black uppercase text-rose-500 mb-1">Impagados</p>
+            <h2 id="stat-impagados" class="text-xl font-black text-rose-600">0</h2>
+        </div>
+        <div class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
+            <p class="text-[8px] font-black uppercase text-emerald-500 mb-1">Cuotas</p>
+            <h2 id="stat-ingresos" class="text-xl font-black text-emerald-600">0€</h2>
+        </div>
+        <div class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
+            <p class="text-[8px] font-black uppercase text-emerald-500 mb-1">Bar</p>
+            <h2 id="stat-bar" class="text-xl font-black text-emerald-600">0€</h2>
+        </div>
+        <div class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
+            <p class="text-[8px] font-black uppercase text-rose-500 mb-1">Gastos</p>
+            <h2 id="stat-gastos-total" class="text-xl font-black text-rose-600">0€</h2>
+        </div>
+        <div class="bg-slate-900 p-4 rounded-3xl shadow-lg">
+            <p class="text-[8px] font-black uppercase text-slate-400 mb-1">Neto</p>
+            <h2 id="stat-balance" class="text-xl font-black text-white">0€</h2>
+        </div>
+    </div>
+</header>
+
+<main class="max-w-7xl mx-auto p-4 md:p-8">
+    <div class="mb-6 bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+        <h3 class="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">Actividad de Pagos</h3>
+        <div class="h-40 md:h-64">
+            <canvas id="chartSocios"></canvas>
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-4 mb-6">
+        <div class="relative">
+            <input type="text" id="buscador" placeholder="Buscar por nombre o nº..." class="w-full p-5 pl-14 rounded-2xl border border-slate-100 shadow-sm outline-none focus:ring-2 focus:ring-slate-900 bg-white text-sm font-bold">
+            <svg class="w-6 h-6 absolute left-5 top-4.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="3"/></svg>
+        </div>
+        <div class="flex bg-slate-200/50 p-1.5 rounded-2xl overflow-x-auto gap-1 no-scrollbar">
+            <button onclick="filtrarEstado('TODOS', this)" class="flex-1 whitespace-nowrap px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:bg-white/50">Todos</button>
+            <button id="filtro-activo-init" onclick="filtrarEstado('ACTIVO', this)" class="flex-1 whitespace-nowrap px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:bg-white text-emerald-600">Activos</button>
+            <button onclick="filtrarPorImpagados(this)" class="flex-1 whitespace-nowrap px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:bg-white text-rose-600">Por Pagar</button>
+            <button onclick="filtrarEstado('BAJA', this)" class="flex-1 whitespace-nowrap px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:bg-white text-slate-400">Baja</button>
+        </div>
+    </div>
+
+    <div class="md:bg-white md:rounded-[2rem] md:border md:border-slate-100 md:shadow-xl md:overflow-hidden">
+        <table class="w-full text-left border-separate border-spacing-y-2 md:border-spacing-y-0">
+            <thead>
+                <tr class="bg-slate-50 text-[9px] uppercase font-black text-slate-400">
+                    <th class="px-6 py-5 text-center">Nº</th>
+                    <th class="px-6 py-5">Socio</th>
+                    <th class="px-6 py-5 text-center">Antigüedad</th>
+                    <th class="px-6 py-5 text-center">Estado</th>
+                    <th class="px-6 py-5 text-center">Pago</th>
+                    <th class="px-6 py-5 text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-socios" class="md:divide-y md:divide-slate-50 text-[11px]">
+                </tbody>
+        </table>
+    </div>
+</main>
+
+<div id="modalPago" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 items-end sm:items-center justify-center p-4">
+    <div class="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 mb-4 sm:mb-0">
+        <div class="flex justify-between items-center mb-8">
+            <h2 class="font-black uppercase text-xs tracking-widest text-slate-400">Registrar Pago</h2>
+            <button onclick="cerrarModal('modalPago')" class="bg-slate-100 w-8 h-8 rounded-full text-slate-400 hover:text-slate-900 transition-all">&times;</button>
+        </div>
+        <form id="formRegistrarPago" class="space-y-4">
+            <input type="hidden" id="pago-num-socio">
+            <div class="text-center">
+                <p id="pago-socio-nombre" class="text-emerald-600 font-black text-2xl tracking-tighter mb-1"></p>
+                <span class="text-[9px] font-black uppercase text-slate-300 tracking-widest">Confirmación de cuota</span>
+            </div>
+            
+            <div class="space-y-1">
+                <label class="text-[9px] font-black uppercase text-slate-400 ml-2">Periodo</label>
+                <select id="pago-periodo" class="w-full p-5 bg-slate-50 rounded-2xl font-bold text-center border-none outline-none appearance-none"></select>
+            </div>
+
+            <div class="space-y-1">
+                <label class="text-[9px] font-black uppercase text-slate-400 ml-2">Importe (€)</label>
+                <input type="number" step="0.01" id="pago-importe" value="20.00" class="w-full p-5 bg-slate-50 rounded-2xl font-black text-3xl text-center text-emerald-600 border-none outline-none">
+            </div>
+
+            <label class="flex items-center justify-between p-5 bg-indigo-50 rounded-[1.5rem] border border-indigo-100 cursor-pointer active:scale-95 transition-all">
+                <span class="text-[10px] font-black text-indigo-700 uppercase">Enviar confirmación Email</span>
+                <input type="checkbox" id="check-enviar-email" checked class="w-6 h-6 accent-indigo-600">
+            </label>
+
+            <button type="submit" id="btn-confirmar-pago" class="w-full py-5 bg-emerald-600 text-white font-black rounded-[1.5rem] uppercase text-xs tracking-widest shadow-lg shadow-emerald-200">Confirmar Pago</button>
+        </form>
+    </div>
+</div>
+
+<div id="modalNuevoSocio" class="fixed inset-0 bg-slate-900/80 hidden z-50 items-center justify-center p-4">
+    <div class="bg-white w-full max-w-2xl rounded-[2.5rem] p-6 sm:p-10 max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <form id="formNuevoSocio" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="col-span-full flex justify-between items-center mb-4">
+                <h2 class="font-black uppercase text-lg tracking-tighter">Alta de Nuevo Socio</h2>
+                <button type="button" onclick="cerrarModal('modalNuevoSocio')" class="text-slate-300 text-3xl">&times;</button>
+            </div>
+            <div class="space-y-1">
+                <label class="text-[9px] font-black text-slate-400 ml-2 uppercase">Nº Socio (Auto)</label>
+                <input type="number" id="nuevo-num-socio" readonly class="w-full p-4 bg-slate-100 rounded-2xl font-black">
+            </div>
+            <div class="space-y-1">
+                <label class="text-[9px] font-black text-slate-400 ml-2 uppercase">Categoría</label>
+                <input type="text" id="nuevo-cargo" value="Socio Colaborador" class="w-full p-4 bg-slate-50 rounded-2xl font-bold">
+            </div>
+            <input type="text" id="nuevo-nombre" placeholder="Nombre" required class="w-full p-4 bg-slate-50 rounded-2xl font-bold">
+            <input type="text" id="nuevo-apellidos" placeholder="Apellidos" required class="w-full p-4 bg-slate-50 rounded-2xl font-bold">
+            <input type="text" id="nuevo-dni" placeholder="DNI" required class="w-full p-4 bg-slate-50 rounded-2xl font-bold">
+            <input type="text" id="nuevo-email" placeholder="Email" class="w-full p-4 bg-slate-50 rounded-2xl font-bold">
+            <input type="text" id="nuevo-telefono" placeholder="Teléfono" class="w-full p-4 bg-slate-50 rounded-2xl font-bold">
+            <input type="date" id="nuevo-fecha-alta" class="w-full p-4 bg-slate-50 rounded-2xl font-bold">
+            
+            <button type="submit" id="btn-guardar-nuevo" class="col-span-full py-5 bg-slate-900 text-white font-black rounded-2xl uppercase tracking-widest mt-4 shadow-xl">Registrar Socio</button>
+        </form>
+    </div>
+</div>
+
+<div id="modalFicha" class="fixed inset-0 bg-slate-900/80 hidden z-50 items-center justify-center p-4">
+    <div class="bg-white w-full max-w-xl rounded-[2.5rem] p-8 max-h-[85vh] overflow-y-auto custom-scrollbar">
+         <div class="flex justify-between items-center mb-6">
+            <h2 id="ficha-num-titulo" class="font-black text-2xl tracking-tighter uppercase"></h2>
+            <button onclick="cerrarModal('modalFicha')" class="text-3xl text-slate-300">&times;</button>
+         </div>
+         <form id="formEditarSocio" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <input type="hidden" id="edit-id-interno">
+            <input type="text" id="edit-nombre" class="w-full p-4 bg-slate-50 rounded-2xl font-bold">
+            <input type="text" id="edit-apellidos" class="w-full p-4 bg-slate-50 rounded-2xl font-bold">
+            <select id="edit-estado" class="w-full p-4 bg-slate-50 rounded-2xl font-black text-center appearance-none">
+                <option value="ACTIVO">✅ ACTIVO</option>
+                <option value="BAJA">❌ BAJA</option>
+            </select>
+            <button type="submit" class="col-span-full py-5 bg-slate-900 text-white font-black rounded-2xl uppercase tracking-widest shadow-lg">Guardar Cambios</button>
+         </form>
+         
+         <div class="mt-10">
+             <h4 class="text-[10px] font-black uppercase text-slate-400 mb-4 tracking-widest flex items-center gap-2">
+                 <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> Historial de Pagos
+             </h4>
+             <div id="historial-pagos-lista" class="space-y-3"></div>
+         </div>
+    </div>
+</div>
+
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<script>
+    // --- CONFIGURACIÓN E INICIALIZACIÓN ---
+    (function(){ emailjs.init("FbPpGg9UWnWljtaHO"); })();
+    const SB_URL = "https://xegikxovbjttailnassr.supabase.co";
+    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhlZ2lreG92Ymp0dGFpbG5hc3NyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4MDA1OTMsImV4cCI6MjA5MzM3NjU5M30.tufFxLYUJ8wdDsFtWW4wL7Z1w3TMeUw3CRbNkHSp58w";
+    const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
+    let listaSocios = [];
+    let listaPagos = [];
+    let listaBar = [];
+    let miGraficoSocios = null;
+
+    async function inicializarApp() {
+        try {
+            const [respSocios, respPagos, respGastos, respBar] = await Promise.all([
+                supabaseClient.from('socios').select('*').order('num_socio', { ascending: true }),
+                supabaseClient.from('pagos').select('*'),
+                supabaseClient.from('gastos').select('importe').eq('estado', 'Pagado'),
+                supabaseClient.from('pagos_bar').select('importe')
+            ]);
+            listaSocios = respSocios.data || [];
+            listaPagos = respPagos.data || [];
+            listaBar = respBar.data || [];
+            
+            actualizarStats(respGastos.data || []);
+            actualizarGraficoSocios(listaPagos);
+            generarOpcionesMeses();
+            filtrarEstado('ACTIVO', document.getElementById('filtro-activo-init'));
+        } catch (err) { console.error(err); }
+    }
+
+    function actualizarStats(gastos) {
+        const totalCuotas = listaPagos.reduce((acc, p) => acc + (Number(p.importe) || 0), 0);
+        const totalBar = listaBar.reduce((acc, b) => acc + (Number(b.importe) || 0), 0);
+        const totalGastos = gastos.reduce((acc, g) => acc + (Number(g.importe) || 0), 0);
+        const neto = (totalCuotas + totalBar) - totalGastos;
+        const impagados = listaSocios.filter(s => s.estado === 'ACTIVO' && !obtenerEstatusPago(s.num_socio).ok).length;
+        
+        document.getElementById('stat-socios').innerText = listaSocios.filter(s => s.estado === 'ACTIVO').length;
+        document.getElementById('stat-impagados').innerText = impagados;
+        document.getElementById('stat-ingresos').innerText = totalCuotas.toFixed(2) + "€";
+        document.getElementById('stat-bar').innerText = totalBar.toFixed(2) + "€";
+        document.getElementById('stat-gastos-total').innerText = totalGastos.toFixed(2) + "€";
+        document.getElementById('stat-balance').innerText = neto.toFixed(2) + "€";
+    }
+
+    function renderizarTabla(datos) {
+        const tbody = document.getElementById('tabla-socios');
+        tbody.innerHTML = datos.map(s => {
+            const status = obtenerEstatusPago(s.num_socio);
+            const semaforo = obtenerSemaforoAntiguedad(s.fecha_alta);
+            return `
+            <tr class="hover:bg-slate-50 transition-colors">
+                <td data-label="Nº Socio" class="px-6 py-4 text-center font-black md:border-b">${s.num_socio}</td>
+                <td data-label="Socio" class="px-6 py-4 md:border-b">
+                    <div class="flex flex-col">
+                        <span class="font-bold text-slate-900">${s.nombre} ${s.apellidos}</span>
+                        <span class="text-[8px] text-slate-400 font-bold uppercase tracking-widest">${s.cargo || ''}</span>
+                    </div>
+                </td>
+                <td data-label="Antigüedad" class="px-6 py-4 text-center md:border-b">
+                    <div class="flex flex-col items-end md:items-center">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full ${semaforo.color} shadow-sm"></span>
+                            <span class="font-bold text-[10px] text-slate-500">${s.fecha_alta ? s.fecha_alta.split('-').reverse().join('-') : '---'}</span>
+                        </div>
+                    </div>
+                </td>
+                <td data-label="Estado" class="px-6 py-4 text-center md:border-b">
+                    <span class="px-3 py-1 rounded-full text-[8px] text-white font-black uppercase ${s.estado === 'ACTIVO' ? 'bg-emerald-500' : 'bg-rose-500'}">${s.estado}</span>
+                </td>
+                <td data-label="Último Pago" class="px-6 py-4 text-center md:border-b">
+                    <span class="px-3 py-1 rounded-full text-[8px] text-white font-black uppercase ${status.color}">${status.texto}</span>
+                </td>
+                <td class="acciones-cell px-6 py-4 text-center md:border-b flex gap-3 justify-center">
+                    <button onclick="abrirPagoRapido(${s.num_socio}, '${s.nombre}')" class="bg-emerald-500 text-white w-10 h-10 rounded-xl font-bold shadow-lg shadow-emerald-100 active:scale-90 transition-all flex items-center justify-center text-lg">€</button>
+                    <button onclick="abrirFichaSocio('${s.id}')" class="bg-slate-900 text-white w-10 h-10 rounded-xl shadow-lg shadow-slate-200 active:scale-90 transition-all flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" stroke-width="2"/></svg>
+                    </button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    // --- LÓGICA DE LOGIN Y SESIÓN ---
+    document.getElementById('formLogin').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btn-entrar');
+        btn.innerText = "ACCEDIENDO...";
+        const { error } = await supabaseClient.auth.signInWithPassword({
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value
+        });
+        if (error) { alert("Error: " + error.message); btn.innerText = "Entrar al Panel"; }
+        else { document.getElementById('seccion-login').classList.add('hidden'); inicializarApp(); }
+    });
+
+    async function verificarSesionActual() {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session) { document.getElementById('seccion-login').classList.add('hidden'); inicializarApp(); }
+    }
+
+    // --- FUNCIONES AUXILIARES ---
+    function obtenerEstatusPago(numSocio) {
+        const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+        const hoy = new Date();
+        const pActual = `${meses[hoy.getMonth()]} ${hoy.getFullYear()}`.toLowerCase();
+        const pagado = listaPagos.some(p => p.periodo.toLowerCase().trim() === pActual && p.num_socio === numSocio);
+        return pagado ? { ok: true, color: 'bg-emerald-600', texto: 'PAGADO' } : { ok: false, color: 'bg-rose-600', texto: 'PENDIENTE' };
+    }
+
+    function obtenerSemaforoAntiguedad(fecha) {
+        if(!fecha) return { color: 'bg-slate-300' };
+        const alta = new Date(fecha);
+        const hoy = new Date();
+        const diffMeses = (hoy.getFullYear() - alta.getFullYear()) * 12 + hoy.getMonth() - alta.getMonth();
+        if(diffMeses >= 6) return { color: 'bg-emerald-500' };
+        if(diffMeses >= 5) return { color: 'bg-amber-400' };
+        return { color: 'bg-rose-500' };
+    }
+
+    function mostrarModal(id) { 
+        document.getElementById(id).classList.remove('hidden'); 
+        document.getElementById(id).classList.add('modal-active'); 
+    }
+    
+    function cerrarModal(id) { 
+        document.getElementById(id).classList.remove('modal-active'); 
+        document.getElementById(id).classList.add('hidden'); 
+    }
+
+    function generarOpcionesMeses() {
+        const s = document.getElementById('pago-periodo');
+        const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+        const hoy = new Date();
+        s.innerHTML = "";
+        for (let i = -1; i < 2; i++) {
+            let d = new Date(hoy.getFullYear(), hoy.getMonth() + i, 1);
+            let txt = `${meses[d.getMonth()]} ${d.getFullYear()}`;
+            s.add(new Option(txt, txt.toLowerCase()));
+        }
+        s.selectedIndex = 1;
+    }
+
+    function filtrarEstado(est, el) {
+        document.querySelectorAll('.flex.bg-slate-200\\/50 button').forEach(b => b.classList.remove('filter-btn-active'));
+        if(el) el.classList.add('filter-btn-active');
+        renderizarTabla(est === 'TODOS' ? listaSocios : listaSocios.filter(s => s.estado === est));
+    }
+
+    function abrirPagoRapido(num, nom) {
+        document.getElementById('pago-num-socio').value = num;
+        document.getElementById('pago-socio-nombre').innerText = nom;
+        mostrarModal('modalPago');
+    }
+
+    function actualizarGraficoSocios(pagos) {
+        const c = {};
+        pagos.forEach(p => { const m = p.periodo; c[m] = (c[m] || 0) + 1; });
+        const labels = Object.keys(c).slice(-6);
+        const ctx = document.getElementById('chartSocios');
+        if (miGraficoSocios) miGraficoSocios.destroy();
+        miGraficoSocios = new Chart(ctx, {
+            type: 'line',
+            data: { labels, datasets: [{ data: labels.map(l => c[l]), borderColor: '#0f172a', backgroundColor: 'rgba(15,23,42,0.05)', fill: true, tension: 0.4, borderWidth: 4, pointRadius: 0 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { display: false }, x: { grid: { display: false } } } }
+        });
+    }
+
+    window.onload = verificarSesionActual;
+</script>
+</body>
+</html>
