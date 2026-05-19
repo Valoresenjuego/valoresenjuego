@@ -443,14 +443,31 @@
     }
 
     function obtenerSemaforoAntiguedad(fecha) {
-        if(!fecha) return { color: 'bg-slate-300' };
-        const alta = new Date(fecha);
-        const hoy = new Date();
-        const diffMeses = (hoy.getFullYear() - alta.getFullYear()) * 12 + hoy.getMonth() - alta.getMonth();
-        if(diffMeses >= 6) return { color: 'bg-emerald-500' };
-        if(diffMeses >= 5) return { color: 'bg-amber-400' };
-        return { color: 'bg-rose-500' };
+    if(!fecha) return { color: 'bg-slate-300', meta: '---' };
+    
+    const alta = new Date(fecha);
+    const hoy = new Date();
+    
+    // Calcular fecha exacta de meta (Alta + 6 meses)
+    const meta = new Date(alta);
+    meta.setMonth(meta.getMonth() + 6);
+    const metaStr = meta.toLocaleDateString('es-ES');
+
+    // Diferencia en milisegundos para comparar
+    const diffMs = meta - hoy;
+    const dosSemanasMs = 14 * 24 * 60 * 60 * 1000;
+
+    if (diffMs <= 0) {
+        // IGUAL O MAYOR A 6 MESES
+        return { color: 'bg-emerald-500', meta: metaStr }; 
+    } else if (diffMs <= dosSemanasMs) {
+        // LE QUEDAN 2 SEMANAS O MENOS
+        return { color: 'bg-amber-400', meta: metaStr };
+    } else {
+        // LE QUEDA MÁS DE 2 SEMANAS
+        return { color: 'bg-rose-500', meta: metaStr };
     }
+}
 
     function mostrarModal(id) { 
         document.getElementById(id).classList.remove('hidden'); 
