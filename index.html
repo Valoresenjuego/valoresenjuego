@@ -577,6 +577,21 @@ document.getElementById('formNuevoSocio').addEventListener('submit', async (e) =
 });
 
 // --- FIN DEL BLOQUE A AÑADIR ---
+	// --- LÓGICA DEL BUSCADOR ---
+document.getElementById('buscador').addEventListener('input', (e) => {
+    const termino = e.target.value.toLowerCase();
+    
+    // Filtramos la lista de socios basándonos en el nombre, apellidos o número
+    const sociosFiltrados = listaSocios.filter(s => {
+        const nombreCompleto = `${s.nombre} ${s.apellidos}`.toLowerCase();
+        const numSocio = s.num_socio.toString();
+        
+        return nombreCompleto.includes(termino) || numSocio.includes(termino);
+    });
+
+    // Mostramos los resultados en la tabla
+    renderizarTabla(sociosFiltrados);
+});
 
 window.onload = verificarSesionActual;
 </script>
