@@ -274,23 +274,27 @@
     let miGraficoSocios = null;
 
     async function inicializarApp() {
-        try {
-            const [respSocios, respPagos, respGastos, respBar] = await Promise.all([
-                supabaseClient.from('socios').select('*').order('num_socio', { ascending: true }),
-                supabaseClient.from('pagos').select('*'),
-                supabaseClient.from('gastos').select('importe').eq('estado', 'Pagado'),
-                supabaseClient.from('pagos_bar').select('importe')
-            ]);
-            listaSocios = respSocios.data || [];
-            listaPagos = respPagos.data || [];
-            listaBar = respBar.data || [];
-            
-            actualizarStats(respGastos.data || []);
-            actualizarGraficoSocios(listaPagos);
-            generarOpcionesMeses();
-            filtrarEstado('ACTIVO', document.getElementById('filtro-activo-init'));
-        } catch (err) { console.error(err); }
-    }
+    try {
+        const [respSocios, respPagos, respGastos, respBar] = await Promise.all([
+            supabaseClient.from('socios').select('*').order('num_socio', { ascending: true }),
+            supabaseClient.from('pagos').select('*'),
+            supabaseClient.from('gastos').select('importe').eq('estado', 'Pagado'),
+            supabaseClient.from('pagos_bar').select('importe')
+        ]);
+
+        // Guardamos los datos EXCLUYENDO al socio 999
+        listaSocios = (respSocios.data || []).filter(s => s.num_socio != 999);
+        listaPagos = (respPagos.data || []).filter(p => p.num_socio != 999);
+        listaBar = respBar.data || [];
+        
+        actualizarStats(respGastos.data || []);
+        actualizarGraficoSocios(listaPagos);
+        generarOpcionesMeses();
+        
+        // Aplicar el filtro inicial (Activos)
+        filtrarEstado('ACTIVO', document.getElementById('filtro-activo-init'));
+    } catch (err) { console.error(err); }
+}
 
     // --- FUNCIONES DE FILTRADO (LO QUE NO FUNCIONABA) ---
 
@@ -541,6 +545,50 @@ document.getElementById('formNuevoSocio').addEventListener('submit', async (e) =
 });
 
 // --- FIN DEL BLOQUE A AÑADIR ---
+	// Función para abrir el modal y calcular el siguiente número de socio
+async function abrirModalNuevoSocio() {
+    // Calculamos el siguiente número saltándonos el 999 si fuera el caso
+    let maxSocio = listaSocios.reduce((max, s) => (s.num_socio > max ? s.num_socio : max), 0);
+    let sugerencia = maxSocio + 1;
+    if (sugerencia === 999) sugerencia = 1000; 
+
+    document.getElementById('nuevo-num-socio').value = sugerencia;
+    document.getElementById('nuevo-fecha-alta').value = new Date().toISOString().split('T')[0];
+    
+    mostrarModal('modalNuevoSocio');
+}
+
+// Evento para enviar el formulario a Supabase
+document.getElementById('formNuevoSocio').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-guardar-nuevo');
+    btn.innerText = "GUARDANDO...";
+    btn.disabled = true;
+
+    const nuevoSocio = {
+        num_socio: parseInt(document.getElementById('nuevo-num-socio').value),
+        nombre: document.getElementById('nuevo-nombre').value,
+        apellidos: document.getElementById('nuevo-apellidos').value,
+        dni: document.getElementById('nuevo-dni').value,
+        email: document.getElementById('nuevo-email').value,
+        telefono: document.getElementById('nuevo-telefono').value,
+        fecha_alta: document.getElementById('nuevo-fecha-alta').value,
+        cargo: document.getElementById('nuevo-cargo').value,
+        estado: 'ACTIVO'
+    };
+
+    const { error } = await supabaseClient.from('socios').insert([nuevoSocio]);
+
+    if (error) {
+        alert("Error al guardar: " + error.message);
+        btn.innerText = "Registrar Socio";
+        btn.disabled = false;
+    } else {
+        cerrarModal('modalNuevoSocio');
+        document.getElementById('formNuevoSocio').reset();
+        await inicializarApp(); // Recarga todo con los nuevos datos
+    }
+});
 
 window.onload = verificarSesionActual;
 </script>
