@@ -498,12 +498,21 @@
 
 // --- PEGA EL SIGUIENTE CÓDIGO AQUÍ (Antes de window.onload) ---
 
+// Función para abrir el modal y calcular el siguiente número de socio ignorando el 999
 async function abrirModalNuevoSocio() {
-    // Buscamos el número más alto para sugerir el siguiente
-    const maxSocio = listaSocios.reduce((max, s) => (s.num_socio > max ? s.num_socio : max), 0);
-    document.getElementById('nuevo-num-socio').value = maxSocio + 1;
+    // 1. Filtramos la lista para ignorar al 999 antes de buscar el máximo
+    const sociosValidos = listaSocios.filter(s => s.num_socio != 999);
     
-    // Fecha de hoy por defecto
+    // 2. Buscamos el número más alto entre los socios válidos
+    const maxSocio = sociosValidos.reduce((max, s) => (s.num_socio > max ? s.num_socio : max), 0);
+    
+    // 3. Sugerimos el siguiente (si por casualidad diera 999, saltamos al 1000)
+    let sugerencia = maxSocio + 1;
+    if (sugerencia === 999) sugerencia = 1000;
+
+    document.getElementById('nuevo-num-socio').value = sugerencia;
+    
+    // Ponemos la fecha de hoy por defecto
     document.getElementById('nuevo-fecha-alta').value = new Date().toISOString().split('T')[0];
     
     mostrarModal('modalNuevoSocio');
