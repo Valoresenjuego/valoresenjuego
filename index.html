@@ -481,17 +481,68 @@
     }
 
     function actualizarGraficoSocios(pagos) {
-        const c = {};
-        pagos.forEach(p => { const m = p.periodo; c[m] = (c[m] || 0) + 1; });
-        const labels = Object.keys(c).slice(-6);
-        const ctx = document.getElementById('chartSocios');
-        if (miGraficoSocios) miGraficoSocios.destroy();
-        miGraficoSocios = new Chart(ctx, {
-            type: 'line',
-            data: { labels, datasets: [{ data: labels.map(l => c[l]), borderColor: '#0f172a', backgroundColor: 'rgba(15,23,42,0.05)', fill: true, tension: 0.4, borderWidth: 4, pointRadius: 0 }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { display: false }, x: { grid: { display: false } } } }
-        });
-    }
+    const c = {};
+    pagos.forEach(p => { const m = p.periodo; c[m] = (c[m] || 0) + 1; });
+    
+    // Obtenemos los últimos 6 meses con datos
+    const labels = Object.keys(c).sort((a, b) => {
+        // Opcional: añadir lógica de ordenación por fecha aquí si los periodos no vienen ordenados
+        return 0; 
+    }).slice(-6);
+
+    const ctx = document.getElementById('chartSocios');
+    if (miGraficoSocios) miGraficoSocios.destroy();
+
+    miGraficoSocios = new Chart(ctx, {
+        type: 'line',
+        data: { 
+            labels, 
+            datasets: [{ 
+                data: labels.map(l => c[l]), 
+                borderColor: '#0f172a', 
+                backgroundColor: 'rgba(15,23,42,0.05)', 
+                fill: true, 
+                tension: 0.4, 
+                borderWidth: 4,
+                pointRadius: 6,           // Tamaño del punto
+                pointBackgroundColor: '#0f172a',
+                pointHoverRadius: 8,
+                showLine: true
+            }] 
+        },
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false, 
+            plugins: { 
+                legend: { display: false },
+                // Configuración para mostrar los números al pasar el ratón o fijos
+                tooltip: {
+                    enabled: true,
+                    callbacks: {
+                        label: function(context) {
+                            return `Socios: ${context.parsed.y}`;
+                        }
+                    }
+                }
+            }, 
+            scales: { 
+                y: { 
+                    display: true, // Lo activamos para que se vea la escala numérica a la izquierda
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1, // Para que no salgan decimales (1.5 socios)
+                        font: { size: 10 }
+                    },
+                    grid: { color: '#f1f5f9' }
+                }, 
+                x: { 
+                    grid: { display: false },
+                    ticks: { font: { size: 10, weight: 'bold' } }
+                } 
+            } 
+        }
+    });
+}
 
     
 	// ... (Tus funciones anteriores de abrirFichaSocio, filtrarEstado, etc.)
