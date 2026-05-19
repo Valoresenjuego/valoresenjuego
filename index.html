@@ -379,43 +379,46 @@
         document.getElementById('stat-balance').innerText = neto.toFixed(2) + "€";
     }
 
-    function renderizarTabla(datos) {
-        const tbody = document.getElementById('tabla-socios');
-        tbody.innerHTML = datos.map(s => {
-            const status = obtenerEstatusPago(s.num_socio);
-            const semaforo = obtenerSemaforoAntiguedad(s.fecha_alta);
-            return `
-            <tr class="hover:bg-slate-50 transition-colors">
-                <td data-label="Nº Socio" class="px-6 py-4 text-center font-black md:border-b">${s.num_socio}</td>
-                <td data-label="Socio" class="px-6 py-4 md:border-b">
-                    <div class="flex flex-col">
-                        <span class="font-bold text-slate-900">${s.nombre} ${s.apellidos}</span>
-                        <span class="text-[8px] text-slate-400 font-bold uppercase tracking-widest">${s.cargo || ''}</span>
+   function renderizarTabla(datos) {
+    const tbody = document.getElementById('tabla-socios');
+    tbody.innerHTML = datos.map(s => {
+        const status = obtenerEstatusPago(s.num_socio);
+        const semaforo = obtenerSemaforoAntiguedad(s.fecha_alta);
+        return `
+        <tr class="hover:bg-slate-50 transition-colors">
+            <td data-label="Nº Socio" class="px-6 py-4 text-center font-black md:border-b">${s.num_socio}</td>
+            <td data-label="Socio" class="px-6 py-4 md:border-b">
+                <div class="flex flex-col">
+                    <span class="font-bold text-slate-900">${s.nombre} ${s.apellidos}</span>
+                    <span class="text-[8px] text-slate-400 font-bold uppercase tracking-widest">${s.cargo || ''}</span>
+                </div>
+            </td>
+            <td data-label="Antigüedad" class="px-6 py-4 text-center md:border-b">
+                <div class="flex flex-col items-end md:items-center">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full ${semaforo.color} shadow-sm"></span>
+                        <span class="font-bold text-[10px] text-slate-500">${s.fecha_alta ? s.fecha_alta.split('-').reverse().join('-') : '---'}</span>
                     </div>
-                </td>
-                <td data-label="Antigüedad" class="px-6 py-4 text-center md:border-b">
-                    <div class="flex flex-col items-end md:items-center">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2.5 h-2.5 rounded-full ${semaforo.color} shadow-sm"></span>
-                            <span class="font-bold text-[10px] text-slate-500">${s.fecha_alta ? s.fecha_alta.split('-').reverse().join('-') : '---'}</span>
-                        </div>
-                    </div>
-                </td>
-                <td data-label="Estado" class="px-6 py-4 text-center md:border-b">
-                    <span class="px-3 py-1 rounded-full text-[8px] text-white font-black uppercase ${s.estado === 'ACTIVO' ? 'bg-emerald-500' : 'bg-rose-500'}">${s.estado}</span>
-                </td>
-                <td data-label="Último Pago" class="px-6 py-4 text-center md:border-b">
-                    <span class="px-3 py-1 rounded-full text-[8px] text-white font-black uppercase ${status.color}">${status.texto}</span>
-                </td>
-                <td class="acciones-cell px-6 py-4 text-center md:border-b flex gap-3 justify-center">
-                    <button onclick="abrirPagoRapido(${s.num_socio}, '${s.nombre}')" class="bg-emerald-500 text-white w-10 h-10 rounded-xl font-bold shadow-lg shadow-emerald-100 active:scale-90 transition-all flex items-center justify-center text-lg">€</button>
-                    <button onclick="abrirFichaSocio('${s.id}')" class="bg-slate-900 text-white w-10 h-10 rounded-xl shadow-lg shadow-slate-200 active:scale-90 transition-all flex items-center justify-center">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" stroke-width="2"/></svg>
-                    </button>
-                </td>
-            </tr>`;
-        }).join('');
-    }
+                    <span class="text-[9px] font-black text-slate-400 uppercase mt-1 tracking-tighter">
+                        Meta 6m: ${semaforo.meta}
+                    </span>
+                </div>
+            </td>
+            <td data-label="Estado" class="px-6 py-4 text-center md:border-b">
+                <span class="px-3 py-1 rounded-full text-[8px] text-white font-black uppercase ${s.estado === 'ACTIVO' ? 'bg-emerald-500' : 'bg-rose-500'}">${s.estado}</span>
+            </td>
+            <td data-label="Último Pago" class="px-6 py-4 text-center md:border-b">
+                <span class="px-3 py-1 rounded-full text-[8px] text-white font-black uppercase ${status.color}">${status.texto}</span>
+            </td>
+            <td class="acciones-cell px-6 py-4 text-center md:border-b flex gap-3 justify-center">
+                <button onclick="abrirPagoRapido(${s.num_socio}, '${s.nombre}')" class="bg-emerald-500 text-white w-10 h-10 rounded-xl font-bold shadow-lg shadow-emerald-100 active:scale-90 transition-all flex items-center justify-center text-lg">€</button>
+                <button onclick="abrirFichaSocio('${s.id}')" class="bg-slate-900 text-white w-10 h-10 rounded-xl shadow-lg shadow-slate-200 active:scale-90 transition-all flex items-center justify-center">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" stroke-width="2"/></svg>
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+}
 
     document.getElementById('formLogin').addEventListener('submit', async (e) => {
         e.preventDefault();
