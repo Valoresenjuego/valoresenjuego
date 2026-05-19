@@ -565,9 +565,68 @@
     });
 }
 
+document.getElementById('formRegistrarPago').addEventListener('submit', async (e) => {
+    e.preventDefault();
     
-	// ... (Tus funciones anteriores de abrirFichaSocio, filtrarEstado, etc.)
+    const btn = document.getElementById('btn-confirmar-pago');
+    const numSocio = document.getElementById('pago-num-socio').value;
+    const nombreSocio = document.getElementById('pago-socio-nombre').innerText;
+    const periodo = document.getElementById('pago-periodo').value;
+    const importe = document.getElementById('pago-importe').value;
+    const enviarEmail = document.getElementById('check-enviar-email').checked;
 
+    btn.innerText = "PROCESANDO...";
+    btn.disabled = true;
+
+    try {
+        // 1. Registro en Supabase
+        const { error: errorPago } = await supabaseClient
+            .from('pagos')
+            .insert([{ 
+                num_socio: parseInt(numSocio), 
+                periodo: periodo, 
+                importe: parseFloat(importe),
+                fecha_pago: new Date().toISOString()
+            }]);
+
+        if (errorPago) throw errorPago;
+
+        // 2. Lógica de envío de email
+        if (enviarEmail) {
+            // Buscamos al socio para obtener su correo de la base de datos
+            const socio = listaSocios.find(s => s.num_socio == numSocio);
+            
+            if (socio && socio.email) {
+                const templateParams = {
+                    nombre_socio: nombreSocio,
+                    importe: importe + "€",
+                    mes_actual: periodo,
+                    email_socio: socio.email  // <--- Cambiado para coincidir con tu EmailJS
+                };
+
+                await emailjs.send(
+                    "service_kyboqyj", 
+                    "template_skp3ab3", 
+                    templateParams
+                );
+                console.log("Email enviado a: " + socio.email);
+            } else {
+                alert("Pago guardado, pero no se pudo enviar email (el socio no tiene correo).");
+            }
+        }
+
+        alert("¡Pago registrado y confirmación enviada!");
+        cerrarModal('modalPago');
+        await inicializarApp(); 
+
+    } catch (err) {
+        console.error("Error:", err);
+        alert("Error: " + err.message);
+    } finally {
+        btn.innerText = "Confirmar Pago";
+        btn.disabled = false;
+    }
+});
 // --- PEGA EL SIGUIENTE CÓDIGO AQUÍ (Antes de window.onload) ---
 
 // Función para abrir el modal y calcular el siguiente número de socio ignorando el 999
