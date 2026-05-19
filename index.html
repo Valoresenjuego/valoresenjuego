@@ -494,6 +494,56 @@
     }
 
     window.onload = verificarSesionActual;
+	// ... (Tus funciones anteriores de abrirFichaSocio, filtrarEstado, etc.)
+
+// --- PEGA EL SIGUIENTE CÓDIGO AQUÍ (Antes de window.onload) ---
+
+async function abrirModalNuevoSocio() {
+    // Buscamos el número más alto para sugerir el siguiente
+    const maxSocio = listaSocios.reduce((max, s) => (s.num_socio > max ? s.num_socio : max), 0);
+    document.getElementById('nuevo-num-socio').value = maxSocio + 1;
+    
+    // Fecha de hoy por defecto
+    document.getElementById('nuevo-fecha-alta').value = new Date().toISOString().split('T')[0];
+    
+    mostrarModal('modalNuevoSocio');
+}
+
+document.getElementById('formNuevoSocio').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-guardar-nuevo');
+    btn.innerText = "GUARDANDO...";
+    btn.disabled = true;
+
+    const nuevoSocio = {
+        num_socio: parseInt(document.getElementById('nuevo-num-socio').value),
+        nombre: document.getElementById('nuevo-nombre').value,
+        apellidos: document.getElementById('nuevo-apellidos').value,
+        dni: document.getElementById('nuevo-dni').value,
+        email: document.getElementById('nuevo-email').value,
+        telefono: document.getElementById('nuevo-telefono').value,
+        fecha_alta: document.getElementById('nuevo-fecha-alta').value,
+        cargo: document.getElementById('nuevo-cargo').value,
+        estado: 'ACTIVO'
+    };
+
+    const { error } = await supabaseClient.from('socios').insert([nuevoSocio]);
+
+    if (error) {
+        alert("Error al guardar: " + error.message);
+        btn.innerText = "Registrar Socio";
+        btn.disabled = false;
+    } else {
+        cerrarModal('modalNuevoSocio');
+        document.getElementById('formNuevoSocio').reset();
+        await inicializarApp(); // Esto refresca la lista automáticamente
+    }
+});
+
+// --- FIN DEL BLOQUE A AÑADIR ---
+
+window.onload = verificarSesionActual;
+</script>
 </script>
 </body>
 </html>
