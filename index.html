@@ -527,7 +527,7 @@ document.getElementById('formNuevoSocio').addEventListener('submit', async (e) =
     const numSocioVal = parseInt(document.getElementById('nuevo-num-socio').value);
     const dniVal = document.getElementById('nuevo-dni').value;
 
-    // 1. Insertamos los datos públicos en la tabla 'socios'
+    // 1. Insertamos en la tabla 'socios' (pública)
     const { error: errorSocio } = await supabaseClient
         .from('socios')
         .insert([{
@@ -542,29 +542,34 @@ document.getElementById('formNuevoSocio').addEventListener('submit', async (e) =
         }]);
 
     if (errorSocio) {
-        alert("Error al crear socio: " + errorSocio.message);
+        alert("Error en tabla socios: " + errorSocio.message);
         btn.innerText = "Registrar Socio";
         btn.disabled = false;
         return;
     }
 
-    // 2. Insertamos el DNI en la tabla 'datos_privados' vinculando por 'num_socio'
+    // 2. Insertamos en 'datos_privados' usando tus atributos exactos
+    // Dejamos socio_id vacío si vas a usar num_socio como vínculo principal
     const { error: errorPrivado } = await supabaseClient
         .from('datos_privados')
         .insert([{
-            num_socio: numSocioVal, // Vinculación principal
-            dni: dniVal
+            num_socio: numSocioVal, // Aquí guardamos el número como pediste
+            dni: dniVal,            // Atributo dni
+            iban: '',               // Atributo iban (vacío de momento)
+            notas_seguridad: ''     // Atributo notas_seguridad (vacío)
         }]);
 
     if (errorPrivado) {
-        console.error("Error al guardar DNI:", errorPrivado.message);
-        alert("Socio creado, pero no se pudo guardar el DNI en la tabla datos_privados.");
+        console.error("DETALLE ERROR PRIVADO:", errorPrivado);
+        alert("Socio creado, pero error en datos_privados: " + errorPrivado.message);
+    } else {
+        cerrarModal('modalNuevoSocio');
+        document.getElementById('formNuevoSocio').reset();
+        await inicializarApp();
     }
-
-    // Limpieza y refresco de la interfaz
-    cerrarModal('modalNuevoSocio');
-    document.getElementById('formNuevoSocio').reset();
-    await inicializarApp(); // Recarga la tabla y estadísticas (ignorando el 999)
+    
+    btn.innerText = "Registrar Socio";
+    btn.disabled = false;
 });
 
 // --- FIN DEL BLOQUE A AÑADIR ---
