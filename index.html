@@ -340,88 +340,77 @@
         renderizarTabla(impagados);
     }
 // Esta función ahora solo abre el modal y prepara los meses
+// 1. Prepara el modal con las opciones de meses
 function enviarAvisoCuota() {
     const s = document.getElementById('difusion-periodo');
     const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
     const hoy = new Date();
     s.innerHTML = "";
     
-    // Generamos opciones: mes pasado, actual y los 2 siguientes
+    // Generamos 4 opciones: Mes anterior, Actual, y los 2 siguientes
     for (let i = -1; i < 3; i++) {
         let d = new Date(hoy.getFullYear(), hoy.getMonth() + i, 1);
         let txt = `${meses[d.getMonth()]} ${d.getFullYear()}`.toUpperCase();
         s.add(new Option(txt, txt));
     }
-    s.selectedIndex = 1; // Por defecto el mes actual
+    s.selectedIndex = 1; // Selecciona el mes actual por defecto
     
     mostrarModal('modalDifusion');
 }
 
-// Esta es la que realmente envía los correos
-// Esta función ahora solo abre el modal y prepara los meses
-function enviarAvisoCuota() {
-    const s = document.getElementById('difusion-periodo');
-    const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-    const hoy = new Date();
-    s.innerHTML = "";
-    
-    // Generamos opciones: mes pasado, actual y los 2 siguientes
-    for (let i = -1; i < 3; i++) {
-        let d = new Date(hoy.getFullYear(), hoy.getMonth() + i, 1);
-        let txt = `${meses[d.getMonth()]} ${d.getFullYear()}`.toUpperCase();
-        s.add(new Option(txt, txt));
-    }
-    s.selectedIndex = 1; // Por defecto el mes actual
-    
-    mostrarModal('modalDifusion');
-}
-
-// Esta es la que realmente envía los correos
+// 2. Ejecuta el envío masivo REAL
 async function ejecutarEnvioMasivo() {
     const periodoSeleccionado = document.getElementById('difusion-periodo').value;
     
-    // --- BLOQUE DE SEGURIDAD PARA PRUEBAS ---
-    const sociosADifundir = [
-        { nombre: "Alberto Herrería", email: "albertoherreria@gmail.com" },
-        { nombre: "Admin Valores", email: "admin@valoresenjuego.com" },
-        { nombre: "Info Valores", email: "info@valoresenjuego.com" }
-    ];
-    // La línea real (listaSocios.filter...) está desactivada para esta prueba.
-    // ----------------------------------------
+    // FILTRO REAL: Solo socios activos que tengan email registrado
+    const sociosADifundir = listaSocios.filter(s => s.estado === 'ACTIVO' && s.email && s.email.trim() !== '');
 
-    if (!confirm(`MODO PRUEBA: ¿Enviar aviso de ${periodoSeleccionado} a los 3 correos de TEST?`)) return;
+    if (sociosADifundir.length === 0) {
+        alert("No se encontraron socios activos con correo electrónico.");
+        return;
+    }
+
+    if (!confirm(`VAS A ENVIAR ${sociosADifundir.length} CORREOS para el periodo ${periodoSeleccionado}.\n\n¿Estás totalmente seguro?`)) return;
 
     const btn = document.getElementById('btn-lanzar-difusion');
     const textoOriginal = btn.innerHTML;
 
     btn.disabled = true;
-    btn.innerHTML = "Probando envíos...";
+    btn.innerHTML = "Iniciando difusión...";
     
     let enviados = 0;
     let errores = 0;
 
     for (const socio of sociosADifundir) {
         try {
-            btn.innerHTML = `Enviando prueba ${enviados + 1}/3...`;
+            // Actualizamos el botón con el progreso real
+            btn.innerHTML = `Enviando ${enviados + 1} de ${sociosADifundir.length}...`;
 
             const templateParams = {
                 to_name: socio.nombre,
-                email_socio: socio.email,
-                mes_actual: periodoSeleccionado 
+                email_socio: socio.email, // Tu variable en EmailJS
+                mes_actual: periodoSeleccionado // Ya viene en MAYÚSCULAS del selector
             };
 
-            await emailjs.send("service_kyboqyj", "template_r6bmf2v", templateParams);
+            await emailjs.send(
+                "service_kyboqyj", 
+                "template_r6bmf2v", 
+                templateParams
+            );
+
             enviados++;
             
-            await new Promise(resolve => setTimeout(resolve, 800)); 
+            // Pausa de seguridad para evitar bloqueos (0.5 segundos entre correos)
+            await new Promise(resolve => setTimeout(resolve, 500)); 
 
         } catch (error) {
-            console.error("Error en prueba:", error);
+            console.error(`Error enviando a ${socio.email}:`, error);
             errores++;
         }
     }
 
-    alert(`Prueba completada.\n✅ Enviados: ${enviados}\n❌ Errores: ${errores}\n\nRevisa las 3 bandejas de entrada.`);
+    alert(`¡Difusión finalizada!\n\n✅ Éxito: ${enviados}\n❌ Fallidos: ${errores}`);
+    
     btn.disabled = false;
     btn.innerHTML = textoOriginal;
     cerrarModal('modalDifusion');
