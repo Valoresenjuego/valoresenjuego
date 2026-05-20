@@ -380,47 +380,48 @@ function enviarAvisoCuota() {
 async function ejecutarEnvioMasivo() {
     const periodoSeleccionado = document.getElementById('difusion-periodo').value;
     
-    if (!confirm(`¿Confirmas que quieres enviar el aviso para ${periodoSeleccionado} a todos los socios activos?`)) return;
+    // --- BLOQUE DE SEGURIDAD PARA PRUEBAS ---
+    const sociosADifundir = [
+        { nombre: "Alberto Herrería", email: "albertoherreria@gmail.com" },
+        { nombre: "Admin Valores", email: "admin@valoresenjuego.com" },
+        { nombre: "Info Valores", email: "info@valoresenjuego.com" }
+    ];
+    // La línea real (listaSocios.filter...) está desactivada para esta prueba.
+    // ----------------------------------------
+
+    if (!confirm(`MODO PRUEBA: ¿Enviar aviso de ${periodoSeleccionado} a los 3 correos de TEST?`)) return;
 
     const btn = document.getElementById('btn-lanzar-difusion');
     const textoOriginal = btn.innerHTML;
-    
-    // Filtrar socios activos
-    const sociosADifundir = listaSocios.filter(s => s.estado === 'ACTIVO' && s.email);
-
-    if (sociosADifundir.length === 0) {
-        alert("No hay socios activos con email.");
-        return;
-    }
 
     btn.disabled = true;
-    btn.innerHTML = "Iniciando...";
+    btn.innerHTML = "Probando envíos...";
     
     let enviados = 0;
     let errores = 0;
 
     for (const socio of sociosADifundir) {
         try {
-            btn.innerHTML = `Enviando ${enviados + 1}/${sociosADifundir.length}...`;
+            btn.innerHTML = `Enviando prueba ${enviados + 1}/3...`;
 
             const templateParams = {
                 to_name: socio.nombre,
                 email_socio: socio.email,
-                mes_actual: periodoSeleccionado // El que elegiste en el select
+                mes_actual: periodoSeleccionado 
             };
 
             await emailjs.send("service_kyboqyj", "template_r6bmf2v", templateParams);
             enviados++;
             
-            await new Promise(resolve => setTimeout(resolve, 400)); // Pausa anti-bloqueo
+            await new Promise(resolve => setTimeout(resolve, 800)); 
 
         } catch (error) {
-            console.error("Error:", error);
+            console.error("Error en prueba:", error);
             errores++;
         }
     }
 
-    alert(`Proceso terminado.\n✅ Enviados: ${enviados}\n❌ Errores: ${errores}`);
+    alert(`Prueba completada.\n✅ Enviados: ${enviados}\n❌ Errores: ${errores}\n\nRevisa las 3 bandejas de entrada.`);
     btn.disabled = false;
     btn.innerHTML = textoOriginal;
     cerrarModal('modalDifusion');
