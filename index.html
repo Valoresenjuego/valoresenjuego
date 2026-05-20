@@ -868,6 +868,44 @@ function exportarSociosExcel() {
     // 5. Descargamos el archivo
     XLSX.writeFile(libro, nombreArchivo);
 }
+	async function enviarBienvenidaResend(email, nombre) {
+    const API_KEY = 're_tu_clave_aqui'; // Tu clave de Resend
+
+    const data = {
+        from: 'Valores en Juego <onboarding@resend.dev>', // Si validas tu dominio, pon el tuyo
+        to: [email],
+        subject: `¡Bienvenido a Valores en Juego, ${nombre}!`,
+        html: `
+            <div style="font-family: sans-serif; color: #334155;">
+                <h1 style="color: #0f172a;">¡Hola, ${nombre}!</h1>
+                <p>Es un placer darte la bienvenida a nuestra asociación.</p>
+                <p>Tu registro se ha completado con éxito el día <strong>${new Date().toLocaleDateString()}</strong>.</p>
+                <br>
+                <p>Atentamente,<br><strong>La Directiva de Valores en Juego</strong></p>
+            </div>
+        `
+    };
+
+    try {
+        const res = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${API_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+            console.log("✅ Correo enviado con Resend");
+        } else {
+            const err = await res.json();
+            console.error("❌ Error Resend:", err);
+        }
+    } catch (error) {
+        console.error("❌ Error de red:", error);
+    }
+}
 window.onload = verificarSesionActual;
 </script>
 </body>
