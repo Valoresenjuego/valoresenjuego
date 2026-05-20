@@ -47,6 +47,7 @@
         .modal-active { display: flex !important; }
         .filter-btn-active { background-color: white !important; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 0.75rem; }
     </style>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body class="text-slate-900">
 
@@ -129,6 +130,10 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v10a2 2 0 002 2z" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Enviar Ahora
         </button>
+		<button onclick="exportarSociosExcel()" class="bg-emerald-100 text-emerald-700 px-6 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-emerald-200 active:scale-95 transition-all flex justify-center items-center gap-2">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Exportar Lista
+</button>
     </div>
 </div>
 
@@ -823,7 +828,47 @@ document.getElementById('buscador').addEventListener('input', (e) => {
     // Mostramos los resultados en la tabla
     renderizarTabla(sociosFiltrados);
 });
+function exportarSociosExcel() {
+    if (!listaSocios || listaSocios.length === 0) {
+        alert("No hay datos de socios para exportar.");
+        return;
+    }
 
+    // 1. Preparamos los datos (limpiamos solo lo que queremos mostrar)
+    const datosParaExcel = listaSocios.map(s => ({
+        "Nº SOCIO": s.num_socio,
+        "NOMBRE": s.nombre,
+        "APELLIDOS": s.apellidos,
+        "EMAIL": s.email || '---',
+        "CARGO": s.cargo || 'Socio',
+        "FECHA ALTA": s.fecha_alta ? s.fecha_alta.split('-').reverse().join('/') : '---',
+        "ESTADO": s.estado
+    }));
+
+    // 2. Creamos el libro y la hoja de Excel
+    const hoja = XLSX.utils.json_to_sheet(datosParaExcel);
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, "Socios");
+
+    // 3. Ajuste opcional: Ancho de columnas automático (básico)
+    const wscols = [
+        {wch: 10}, // Nº Socio
+        {wch: 20}, // Nombre
+        {wch: 25}, // Apellidos
+        {wch: 30}, // Email
+        {wch: 15}, // Cargo
+        {wch: 15}, // Fecha Alta
+        {wch: 10}  // Estado
+    ];
+    hoja['!cols'] = wscols;
+
+    // 4. Generamos el nombre del archivo con la fecha de hoy
+    const fecha = new Date().toISOString().slice(0, 10);
+    const nombreArchivo = `Lista_Socios_ValoresEnJuego_${fecha}.xlsx`;
+
+    // 5. Descargamos el archivo
+    XLSX.writeFile(libro, nombreArchivo);
+}
 window.onload = verificarSesionActual;
 </script>
 </body>
