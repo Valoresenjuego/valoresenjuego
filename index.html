@@ -720,8 +720,58 @@
             btn.disabled = false;
         }
     });
+// --- ENVIAR RECIBO DE CUOTA A TRAVÉS DE EMAILJS (REUTILIZANDO PLANTILLA UNIVERSAL) ---
+    async function enviarReciboCuotaEmailJS(email, nombre, importe, concepto, fechaPago) {
+        // Formateamos la fecha del pago visualmente a DD/MM/YYYY
+        const fechaFormateada = fechaPago ? fechaPago.split('-').reverse().join('/') : new Date().toLocaleDateString('es-ES');
 
-    // --- ENVIAR CORREO DE BIENVENIDA A TRAVÉS DE EMAILJS (CON DISEÑO HTML REFORZADO) ---
+        // Construimos el HTML del recibo de forma compacta (sin saltos de línea para evitar huecos grandes)
+        const HTMLRecibo = '<div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 14px; background-color: #ffffff;">' +
+            `<h2 style="font-size: 18px; margin: 0 0 10px 0; color: #0f172a; font-weight: 700;">Justificante de Pago - Recibí</h2>` +
+            `<p style="font-size: 14px; line-height: 1.4; margin: 0 0 14px 0; color: #334155;">Hola ${nombre}, hemos recibido correctamente el pago de tu cuota. A continuación te detallamos los datos del justificante:</p>` +
+            
+            // Ficha del recibo muy clara y compacta con borde verde
+            '<div style="background-color: #f8fafc; padding: 12px 15px; border-radius: 8px; margin: 0 0 14px 0; border-left: 4px solid #10b981;">' +
+                `<p style="margin: 0 0 4px 0; font-size: 13px; color: #475569;"><strong>Concepto:</strong> <span style="color: #0f172a; font-weight: 600;">${concepto}</span></p>` +
+                `<p style="margin: 0 0 4px 0; font-size: 13px; color: #475569;"><strong>Importe recibido:</strong> <span style="font-weight: 800; color: #10b981; font-size: 15px;">${importe} €</span></p>` +
+                `<p style="margin: 0; font-size: 13px; color: #475569;"><strong>Fecha del pago:</strong> <span style="color: #0f172a; font-weight: 600;">${fechaFormateada}</span></p>` +
+            '</div>' +
+
+            '<p style="font-size: 13px; line-height: 1.4; color: #475569; margin: 0 0 20px 0;">Este correo sirve como justificante oficial de pago para tu registro. No es necesario que respondas a este mensaje.</p>' +
+            
+            // Cierre
+            '<p style="font-size: 14px; font-weight: bold; color: #0f172a; margin: 0 0 2px 0;">¡Muchas gracias por tu colaboración!</p>' +
+            '<p style="font-size: 13px; color: #64748b; margin: 0; line-height: 1.3;">Un saludo,<br><strong style="color: #0f172a;">Equipo de Valores en Juego</strong></p>' +
+        '</div>';
+
+        const templateParams = {
+            to_email: email, 
+            asunto_correo: `Justificante de Pago: ${concepto}`, 
+            mensaje_personalizado: HTMLRecibo // Aquí inyectamos el recibo compacto
+        };
+
+        try {
+            // Hacemos la llamada HTTP directa a la API de EmailJS usando tus datos
+            const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    service_id: "service_kyboqyj",
+                    template_id: "template_r6bmf2v", // Reutiliza tu plantilla universal de forma gratuita
+                    user_id: "FbPpGg9UWnWljtaHO",
+                    template_params: templateParams
+                })
+            });
+            
+            if (response.ok) {
+                console.log("✅ Recibo de cuota enviado con éxito (Reutilizando plantilla universal).");
+            } else {
+                console.error("❌ Error en la respuesta de EmailJS al enviar recibo:", await response.text());
+            }
+        } catch (err) {
+            console.error("❌ Error de red al enviar el recibo:", err);
+        }
+    }
     // --- ENVIAR CORREO DE BIENVENIDA A TRAVÉS DE EMAILJS (FORMATO COMPACTO) ---
     async function enviarBienvenidaEmailJS(email, nombre, numSocio, fechaAlta) {
         // Formateamos la fecha visualmente a DD/MM/YYYY
