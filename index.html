@@ -768,6 +768,7 @@
     }
 
     // --- FUNCIÓN DE LECTURA Y PRECARGA DESDE GOOGLE SHEETS ---
+    // --- FUNCIÓN DE LECTURA Y PRECARGA DESDE GOOGLE SHEETS (CORREGIDA) ---
     async function precargarDesdeGoogleSheet() {
         const buscadorInput = document.getElementById('sheet-buscar-identificador').value.trim().toLowerCase();
         const btn = document.getElementById('btn-precargar-sheet');
@@ -827,18 +828,30 @@
                 return;
             }
 
-            const { data: existente, error: errCheck } = await supabaseClient
+            // 🔍 COMPROBACIÓN CORRECTA DE DUPLICADOS:
+            // Buscamos el email en 'socios'
+            const { data: dupEmail } = await supabaseClient
                 .from('socios')
                 .select('num_socio, nombre, apellidos')
-                .or(`dni.eq.${socioEncontrado.dni},email.eq.${socioEncontrado.email}`);
+                .eq('email', socioEncontrado.email);
 
-            if (errCheck) throw errCheck;
-
-            if (existente && existente.length > 0) {
-                alert(`⛔ Este socio ya está registrado en el sistema.\nAsociado al Socio Nº ${existente[0].num_socio}: ${existente[0].nombre} ${existente[0].apellidos}`);
+            if (dupEmail && dupEmail.length > 0) {
+                alert(`⛔ Este Email ya está registrado.\nSocio Nº ${dupEmail[0].num_socio}: ${dupEmail[0].nombre} ${dupEmail[0].apellidos}`);
                 return;
             }
 
+            // Buscamos el DNI en 'datos_privados'
+            const { data: dupDni } = await supabaseClient
+                .from('datos_privados')
+                .select('num_socio')
+                .eq('dni', socioEncontrado.dni);
+
+            if (dupDni && dupDni.length > 0) {
+                alert(`⛔ Este DNI ya está registrado en el sistema bajo el número de socio: ${dupDni[0].num_socio}`);
+                return;
+            }
+
+            // Si pasa los filtros, rellenamos el formulario
             document.getElementById('nuevo-nombre').value = socioEncontrado.nombre;
             document.getElementById('nuevo-apellidos').value = socioEncontrado.apellidos;
             document.getElementById('nuevo-dni').value = socioEncontrado.dni;
@@ -847,7 +860,7 @@
             document.getElementById('nuevo-cargo').value = "Socio Colaborador";
             document.getElementById('nuevo-fecha-alta').value = new Date().toISOString().split('T')[0];
 
-            alert("✅ Datos precargados con éxito. Listo para procesar.");
+            alert("✅ Datos precargados con éxito. El usuario no está duplicado.");
 
         } catch (error) {
             console.error(error);
@@ -871,6 +884,7 @@
     }
 
     // --- REGISTRO DE NUEVO SOCIO DESDE EL FORMULARIO ---
+    // --- REGISTRO DE NUEVO SOCIO DESDE EL FORMULARIO (CORREGIDO) ---
     document.getElementById('formNuevoSocio').addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = document.getElementById('btn-guardar-nuevo');
@@ -884,20 +898,26 @@
         const fechaAltaVal = document.getElementById('nuevo-fecha-alta').value;
         const cargoVal = document.getElementById('nuevo-cargo').value.trim();
 
-        // Verificación de duplicidad de última instancia
-        const { data: verificarDuplicado } = await supabaseClient
-            .from('socios')
-            .select('id')
-            .or(`dni.eq.${dniVal},email.eq.${emailVal}`);
+        // 🔍 Verificación final de duplicidad cruzada
+        if (emailVal) {
+            const { data: checkEmail } = await supabaseClient.from('socios').select('id').eq('email', emailVal);
+            if (checkEmail && checkEmail.length > 0) {
+                alert("Error: Este Correo Electrónico ya existe en la base de datos.");
+                btn.innerText = "Registrar Socio";
+                btn.disabled = false;
+                return;
+            }
+        }
 
-        if (verificarDuplicado && verificarDuplicado.length > 0) {
-            alert("Error: Este DNI o Correo ya existe en la base de datos.");
+        const { data: checkDni } = await supabaseClient.from('datos_privados').select('num_socio').eq('dni', dniVal);
+        if (checkDni && checkDni.length > 0) {
+            alert(`Error: El DNI introducido ya pertenece al socio número ${checkDni[0].num_socio}.`);
             btn.innerText = "Registrar Socio";
             btn.disabled = false;
             return;
         }
 
-        // 1. Insertar en tabla 'socios'
+        // 1. Insertar en tabla 'socios' (Sin el campo dni)
         const { data: nuevoSocioCreado, error: errorSocio } = await supabaseClient
             .from('socios')
             .insert([{
@@ -921,13 +941,13 @@
 
         const idInterno = nuevoSocioCreado[0].id;
 
-        // 2. Insertar en tabla 'datos_privados'
+        // 2. Insertar en tabla 'datos_privados' (Aquí guardamos el DNI)
         const { error: errorPrivado } = await supabaseClient
             .from('datos_privados')
             .insert([{
                 socio_id: idInterno,     
                 num_socio: numSocioVal,  
-                dni: dniVal,
+                dni: dniVal,             // Guardado correctamente aquí
                 iban: '',               
                 notas_seguridad: ''     
             }]);
