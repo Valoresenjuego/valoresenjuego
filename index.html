@@ -724,31 +724,62 @@
     // --- ENVIAR CORREO DE BIENVENIDA USANDO PLANTILLA WEB DE RESEND ---
     // --- ENVIAR CORREO DE BIENVENIDA A TRAVÉS DE EMAILJS (SOLUCIÓN SIN BLOQUEO DE RED) ---
     // --- ENVIAR CORREO DE BIENVENIDA A TRAVÉS DE EMAILJS (CON CREDENCIALES CONFIGURADAS) ---
+    // --- ENVIAR CORREO DE BIENVENIDA A TRAVÉS DE EMAILJS (CON DISEÑO HTML REFORZADO) ---
     async function enviarBienvenidaEmailJS(email, nombre, numSocio, fechaAlta) {
         // Formateamos la fecha visualmente a DD/MM/YYYY
         const fechaFormateada = fechaAlta ? fechaAlta.split('-').reverse().join('/') : new Date().toLocaleDateString('es-ES');
 
-        // Redactamos el texto que se inyectará en tu plantilla universal
-        const textoBienvenida = `¡Bienvenido/a, ${nombre}!\n\n` +
-                                `Estamos muy contentos de que te hayas unido a nuestra comunidad como Socio Colaborador.\n\n` +
-                                `Tu número de socio es: ${numSocio}\n` +
-                                `Fecha de alta: ${fechaFormateada}\n\n` +
-                                `Próximamente recibirás información sobre actividades, eventos y noticias del grupo.\n` +
-                                `Si tienes alguna pregunta, no dudes en contactarnos respondiendo directamente a este correo.\n\n` +
-                                `¡Gracias por ser parte!\n\n` +
-                                `Un saludo,\n` +
-                                `Equipo de Valores en Juego`;
+        // Construimos el mensaje directamente con diseño HTML elegante
+        const HTMLBienvenida = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; max-width: 550px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 20px; background-color: #ffffff;">
+                
+                <h2 style="font-size: 20px; margin-top: 0; margin-bottom: 16px; color: #0f172a; font-weight: 700;">
+                    ¡Te damos la bienvenida, ${nombre}!
+                </h2>
+                
+                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 24px; color: #334155;">
+                    Estamos muy contentos de que te hayas unido a nuestra comunidad como <strong>Socio Colaborador</strong> en la asociación.
+                </p>
+                
+                <div style="background-color: #f8fafc; padding: 18px; border-radius: 14px; margin-bottom: 24px; border-left: 4px solid #0f172a;">
+                    <p style="margin: 0; font-size: 14px; padding: 3px 0; color: #475569;">
+                        <strong>Tu número de socio:</strong> 
+                        <span style="font-weight: 800; color: #0f172a; font-size: 15px;">${numSocio}</span>
+                    </p>
+                    <p style="margin: 0; font-size: 14px; padding: 3px 0; color: #475569;">
+                        <strong>Fecha de alta oficial:</strong> 
+                        <span style="color: #0f172a; font-weight: 600;">${fechaFormateada}</span>
+                    </p>
+                </div>
+
+                <p style="font-size: 14px; line-height: 1.6; color: #475569; margin-bottom: 12px;">
+                    Próximamente recibirás información detallada sobre las próximas actividades, eventos y noticias exclusivas de nuestro grupo.
+                </p>
+                
+                <p style="font-size: 14px; line-height: 1.6; color: #475569; margin-bottom: 28px;">
+                    Si tienes cualquier tipo de consulta, no dudes en contactarnos respondiendo de forma directa a este mismo correo electrónico.
+                </p>
+                
+                <p style="font-size: 15px; font-weight: bold; color: #0f172a; margin-bottom: 4px;">
+                    ¡Gracias por tu apoyo y confianza!
+                </p>
+                <p style="font-size: 14px; color: #64748b; margin: 0; line-height: 1.5;">
+                    Un cordial saludo,<br>
+                    <strong style="color: #0f172a;">Equipo de Valores en Juego</strong>
+                </p>
+                
+            </div>
+        `;
 
         // Preparamos los parámetros exactos
-        // NOTA: Asegúrate de que en tu plantilla de EmailJS hayas escrito {{to_email}}, {{asunto_correo}} y {{{mensaje_personalizado}}}
+        // Modificamos el asunto para quitar la barra "/" y evitar que EmailJS pinte el código "&#x2F;"
         const templateParams = {
             to_email: email, 
-            asunto_correo: `¡Bienvenido/a a nuestra comunidad, ${nombre}!`,
-            mensaje_personalizado: textoBienvenida
+            asunto_correo: `Bienvenido a nuestra comunidad, ${nombre}`,
+            mensaje_personalizado: HTMLBienvenida
         };
 
         try {
-            // Pasamos tus credenciales exactas. El cuarto parámetro es tu PUBLIC KEY, crucial para que encuentre la plantilla.
             const response = await emailjs.send(
                 "service_kyboqyj", 
                 "template_r6bmf2v", 
@@ -758,7 +789,7 @@
             console.log("✅ Correo de bienvenida enviado con éxito a través de EmailJS.", response.status, response.text);
         } catch (err) {
             console.error("❌ Error al enviar bienvenida con EmailJS:", err);
-            alert("Error al enviar el correo de bienvenida. Revisa si las variables internas de la plantilla coinciden.");
+            alert("Error al enviar el correo de bienvenida.");
         }
     }
     // --- FUNCIÓN DE LECTURA Y PRECARGA DESDE GOOGLE SHEETS (CORREGIDA) ---
