@@ -722,47 +722,39 @@
     // --- ENVIAR CORREO DE BIENVENIDA CON LA PLANTILLA EXACTA (RESEND) ---
     // --- ENVIAR CORREO DE BIENVENIDA CON LA PLANTILLA EXACTA (RESEND + PROXY) ---
     // --- ENVIAR CORREO DE BIENVENIDA USANDO PLANTILLA WEB DE RESEND ---
-    async function enviarBienvenidaResendTemplate(email, nombre, numSocio, fechaAlta) {
+    // --- ENVIAR CORREO DE BIENVENIDA A TRAVÉS DE EMAILJS (SOLUCIÓN SIN BLOQUEO DE RED) ---
+    async function enviarBienvenidaEmailJS(email, nombre, numSocio, fechaAlta) {
         // Formateamos la fecha visualmente a DD/MM/YYYY
         const fechaFormateada = fechaAlta ? fechaAlta.split('-').reverse().join('/') : new Date().toLocaleDateString('es-ES');
 
-        // Construimos los datos que requiere la API de plantillas de Resend
-        const data = {
-            from: 'Valores en Juego <onboarding@resend.dev>', // ⚠️ Cambia por tu correo corporativo al verificar tu dominio
-            to: [email],
-            subject: `¡Bienvenido/a a nuestra comunidad, ${nombre}!`,
-            template: 'bienvenida-socios', // Revisa que este nombre coincida EXACTAMENTE con el de tu panel web
-            bindings: {
-                nombre_socio: nombre,
-                num_socio: String(numSocio),
-                fecha_alta: fechaFormateada
-            }
+        // Redactamos el texto del correo directamente desde aquí
+        const textoBienvenida = `¡Bienvenido/a, ${nombre}!\n\n` +
+                                `Estamos muy contentos de que te hayas unido a nuestra comunidad como Socio Colaborador.\n\n` +
+                                `Tu número de socio es: ${numSocio}\n` +
+                                `Fecha de alta: ${fechaFormateada}\n\n` +
+                                `Próximamente recibirás información sobre actividades, eventos y noticias del grupo.\n` +
+                                `Si tienes alguna pregunta, no dudes en contactarnos respondiendo directamente a este correo.\n\n` +
+                                `¡Gracias por ser parte!\n\n` +
+                                `Un saludo,\n` +
+                                `Equipo de Valores en Juego`;
+
+        // Preparamos los parámetros para tu plantilla universal de EmailJS
+        const templateParams = {
+            to_email: email, // Revisa si en tu EmailJS el campo "To Email" se llama {{to_email}} o {{email}}
+            asunto_correo: `¡Bienvenido/a a nuestra comunidad, ${nombre}!`,
+            mensaje_personalizado: textoBienvenida
         };
 
         try {
-            const response = await fetch('https://api.resend.com/emails', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${RESEND_API_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
-
-            if (response.ok) {
-                const resData = await response.json();
-                console.log("✅ ¡Correo de bienvenida enviado con éxito desde la plantilla de Resend!", resData);
-            } else {
-                const errJson = await response.json();
-                console.error("❌ Error de la API de Resend:", errJson);
-                
-                // Alerta en caso de restricción por estar en Modo Prueba
-                if(JSON.stringify(errJson).includes("restriction") || response.status === 403) {
-                    alert("Aviso de Resend: Mientras tu cuenta esté en modo Sandbox, solo puedes enviar el alta al correo con el que te registraste en Resend.");
-                }
-            }
+            // REEMPLAZA "TU_ID_DE_PLANTILLA_MODIFICADA" por el ID de la plantilla que editaste en el Paso 1
+            const response = await emailjs.send(
+                "service_kyboqyj", 
+                "TU_ID_DE_PLANTILLA_MODIFICADA", 
+                templateParams
+            );
+            console.log("✅ Correo de bienvenida enviado con éxito a través de EmailJS.", response.status, response.text);
         } catch (err) {
-            console.error("❌ Error físico de red al conectar con Resend:", err);
+            console.error("❌ Error al enviar bienvenida con EmailJS:", err);
         }
     }
     // --- FUNCIÓN DE LECTURA Y PRECARGA DESDE GOOGLE SHEETS (CORREGIDA) ---
