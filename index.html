@@ -947,7 +947,7 @@
         } else {
             // 3. Lanzar correo electrónico asíncrono si dispone de email
             if (emailVal) {
-                await enviarBienvenidaResendTemplate(emailVal, nombreVal, numSocioVal, fechaAltaVal);
+                await enviarBienvenidaEmailJS(emailVal, nombreVal, numSocioVal, fechaAltaVal);
             }
 
             cerrarModal('modalNuevoSocio');
