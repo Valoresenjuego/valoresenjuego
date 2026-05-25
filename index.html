@@ -719,60 +719,31 @@
         }
     });
 
-    // --- ENVIAR CORREO DE BIENVENIDA CON LA PLANTILLA EXACTA (RESEND) ---
-    // --- ENVIAR CORREO DE BIENVENIDA CON LA PLANTILLA EXACTA (RESEND + PROXY) ---
-    // --- ENVIAR CORREO DE BIENVENIDA USANDO PLANTILLA WEB DE RESEND ---
-    // --- ENVIAR CORREO DE BIENVENIDA A TRAVÉS DE EMAILJS (SOLUCIÓN SIN BLOQUEO DE RED) ---
-    // --- ENVIAR CORREO DE BIENVENIDA A TRAVÉS DE EMAILJS (CON CREDENCIALES CONFIGURADAS) ---
     // --- ENVIAR CORREO DE BIENVENIDA A TRAVÉS DE EMAILJS (CON DISEÑO HTML REFORZADO) ---
+    // --- ENVIAR CORREO DE BIENVENIDA A TRAVÉS DE EMAILJS (FORMATO COMPACTO) ---
     async function enviarBienvenidaEmailJS(email, nombre, numSocio, fechaAlta) {
         // Formateamos la fecha visualmente a DD/MM/YYYY
         const fechaFormateada = fechaAlta ? fechaAlta.split('-').reverse().join('/') : new Date().toLocaleDateString('es-ES');
 
-        // Construimos el mensaje directamente con diseño HTML elegante
-        const HTMLBienvenida = `
-            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; max-width: 550px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 20px; background-color: #ffffff;">
-                
-                <h2 style="font-size: 20px; margin-top: 0; margin-bottom: 16px; color: #0f172a; font-weight: 700;">
-                    ¡Te damos la bienvenida, ${nombre}!
-                </h2>
-                
-                <p style="font-size: 15px; line-height: 1.6; margin-bottom: 24px; color: #334155;">
-                    Estamos muy contentos de que te hayas unido a nuestra comunidad como <strong>Socio Colaborador</strong> en la asociación.
-                </p>
-                
-                <div style="background-color: #f8fafc; padding: 18px; border-radius: 14px; margin-bottom: 24px; border-left: 4px solid #0f172a;">
-                    <p style="margin: 0; font-size: 14px; padding: 3px 0; color: #475569;">
-                        <strong>Tu número de socio:</strong> 
-                        <span style="font-weight: 800; color: #0f172a; font-size: 15px;">${numSocio}</span>
-                    </p>
-                    <p style="margin: 0; font-size: 14px; padding: 3px 0; color: #475569;">
-                        <strong>Fecha de alta oficial:</strong> 
-                        <span style="color: #0f172a; font-weight: 600;">${fechaFormateada}</span>
-                    </p>
-                </div>
+        // Construimos el HTML todo seguido en una sola línea o sin espacios vacíos para evitar huecos extra
+        const HTMLBienvenida = '<div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 14px; background-color: #ffffff;">' +
+            `<h2 style="font-size: 18px; margin: 0 0 10px 0; color: #0f172a; font-weight: 700;">¡Te damos la bienvenida, ${nombre}!</h2>` +
+            `<p style="font-size: 14px; line-height: 1.4; margin: 0 0 14px 0; color: #334155;">Estamos muy contentos de que te hayas unido a nuestra comunidad como <strong>Socio Colaborador</strong>.</p>` +
+            
+            // Ficha de datos muy compacta
+            '<div style="background-color: #f8fafc; padding: 12px 15px; border-radius: 8px; margin: 0 0 14px 0; border-left: 4px solid #0f172a;">' +
+                `<p style="margin: 0 0 4px 0; font-size: 13px; color: #475569;"><strong>Tu número de socio:</strong> <span style="font-weight: 800; color: #0f172a;">${numSocio}</span></p>` +
+                `<p style="margin: 0; font-size: 13px; color: #475569;"><strong>Fecha de alta oficial:</strong> <span style="color: #0f172a; font-weight: 600;">${fechaFormateada}</span></p>` +
+            '</div>' +
 
-                <p style="font-size: 14px; line-height: 1.6; color: #475569; margin-bottom: 12px;">
-                    Próximamente recibirás información detallada sobre las próximas actividades, eventos y noticias exclusivas de nuestro grupo.
-                </p>
-                
-                <p style="font-size: 14px; line-height: 1.6; color: #475569; margin-bottom: 28px;">
-                    Si tienes cualquier tipo de consulta, no dudes en contactarnos respondiendo de forma directa a este mismo correo electrónico.
-                </p>
-                
-                <p style="font-size: 15px; font-weight: bold; color: #0f172a; margin-bottom: 4px;">
-                    ¡Gracias por tu apoyo y confianza!
-                </p>
-                <p style="font-size: 14px; color: #64748b; margin: 0; line-height: 1.5;">
-                    Un cordial saludo,<br>
-                    <strong style="color: #0f172a;">Equipo de Valores en Juego</strong>
-                </p>
-                
-            </div>
-        `;
+            '<p style="font-size: 13px; line-height: 1.4; color: #475569; margin: 0 0 8px 0;">Próximamente recibirás información sobre las actividades, eventos y noticias de nuestro grupo.</p>' +
+            '<p style="font-size: 13px; line-height: 1.4; color: #475569; margin: 0 0 20px 0;">Si tienes cualquier consulta, puedes responder directamente a este correo electrónico.</p>' +
+            
+            // Cierre compacto
+            '<p style="font-size: 14px; font-weight: bold; color: #0f172a; margin: 0 0 2px 0;">¡Gracias por tu apoyo!</p>' +
+            '<p style="font-size: 13px; color: #64748b; margin: 0; line-height: 1.3;">Un saludo,<br><strong style="color: #0f172a;">Equipo de Valores en Juego</strong></p>' +
+        '</div>';
 
-        // Preparamos los parámetros exactos
-        // Modificamos el asunto para quitar la barra "/" y evitar que EmailJS pinte el código "&#x2F;"
         const templateParams = {
             to_email: email, 
             asunto_correo: `Bienvenido a nuestra comunidad, ${nombre}`,
@@ -780,16 +751,23 @@
         };
 
         try {
-            const response = await emailjs.send(
-                "service_kyboqyj", 
-                "template_r6bmf2v", 
-                templateParams,
-                "FbPpGg9UWnWljtaHO"
-            );
-            console.log("✅ Correo de bienvenida enviado con éxito a través de EmailJS.", response.status, response.text);
+            const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    service_id: "service_kyboqyj",
+                    template_id: "template_r6bmf2v",
+                    user_id: "FbPpGg9UWnWljtaHO",
+                    template_params: templateParams
+                })
+            });
+            if (response.ok) {
+                console.log("✅ Correo de bienvenida enviado con éxito (Formato compacto).");
+            } else {
+                console.error("❌ Error en la respuesta de EmailJS:", await response.text());
+            }
         } catch (err) {
-            console.error("❌ Error al enviar bienvenida con EmailJS:", err);
-            alert("Error al enviar el correo de bienvenida.");
+            console.error("❌ Error de red en EmailJS:", err);
         }
     }
     // --- FUNCIÓN DE LECTURA Y PRECARGA DESDE GOOGLE SHEETS (CORREGIDA) ---
