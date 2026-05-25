@@ -748,7 +748,8 @@
         };
 
         try {
-            const response = await fetch('https://api.resend.com/emails', {
+           const response = await fetch('https://cors-anywhere.herokuapp.com/https://api.resend.com/emails', {
+			// --- ENVIAR CORREO DE BIENVENIDA CON LA PLANTILLA EXACTA (RESEND) const response = await fetch('https://api.resend.com/emails', {---
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${RESEND_API_KEY}`,
