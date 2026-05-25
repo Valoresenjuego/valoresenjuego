@@ -677,6 +677,7 @@
         btn.disabled = true;
 
         try {
+            // 1. Guardamos el pago en la base de datos de Supabase
             const { error: errorPago } = await supabaseClient
                 .from('pagos')
                 .insert([{ 
@@ -688,22 +689,23 @@
 
             if (errorPago) throw errorPago;
 
+            // 2. Si el checkbox de enviar email está activo, disparamos el nuevo recibo
             if (enviarEmail) {
                 const socio = listaSocios.find(s => s.num_socio == numSocio);
                 
                 if (socio && socio.email) {
-                    const templateParams = {
-                        nombre_socio: nombreSocio,
-                        importe: importe + "€",
-                        mes_actual: periodoMayusculas, 
-                        email_socio: socio.email 
-                    };
-
-                    await emailjs.send(
-                        "service_kyboqyj", 
-                        "template_skp3ab3", 
-                        templateParams
+                    const fechaActualString = new Date().toISOString().split('T')[0];
+                    
+                    // Llamamos a tu nueva función de recibo utilizando la plantilla universal
+                    await enviarReciboCuotaEmailJS(
+                        socio.email,
+                        nombreSocio,
+                        importe,
+                        `Cuota - Periodo ${periodoMayusculas}`,
+                        fechaActualString
                     );
+                } else {
+                    console.warn("⚠️ No se pudo enviar el recibo porque el socio no dispone de correo electrónico.");
                 }
             }
 
