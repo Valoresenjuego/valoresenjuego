@@ -721,39 +721,26 @@
 
     // --- ENVIAR CORREO DE BIENVENIDA CON LA PLANTILLA EXACTA (RESEND) ---
     // --- ENVIAR CORREO DE BIENVENIDA CON LA PLANTILLA EXACTA (RESEND + PROXY) ---
-    async function enviarBienvenidaResend(email, nombre, numSocio, fechaAlta) {
+    // --- ENVIAR CORREO DE BIENVENIDA USANDO PLANTILLA WEB DE RESEND ---
+    async function enviarBienvenidaResendTemplate(email, nombre, numSocio, fechaAlta) {
         // Formateamos la fecha visualmente a DD/MM/YYYY
         const fechaFormateada = fechaAlta ? fechaAlta.split('-').reverse().join('/') : new Date().toLocaleDateString('es-ES');
 
+        // Construimos los datos que requiere la API de plantillas de Resend
         const data = {
-            from: 'Valores en Juego <onboarding@resend.dev>', 
+            from: 'Valores en Juego <onboarding@resend.dev>', // ⚠️ Cambia por tu correo corporativo al verificar tu dominio
             to: [email],
             subject: `¡Bienvenido/a a nuestra comunidad, ${nombre}!`,
-            html: `
-                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; max-width: 550px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 20px; background-color: #ffffff;">
-                    <p style="font-size: 16px; margin-bottom: 12px; font-weight: bold; color: #0f172a;">¡Bienvenido/a, ${nombre}!</p>
-                    <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">Estamos muy contentos de que te hayas unido a nuestra comunidad como <strong style="color: #0f172a;">Socio Colaborador</strong>.</p>
-                    
-                    <div style="background-color: #f8fafc; padding: 18px; border-radius: 14px; margin-bottom: 20px; border-left: 4px solid #0f172a;">
-                        <p style="margin: 0; font-size: 14px; padding: 3px 0;"><strong style="color: #475569;">Tu número de socio es:</strong> <span style="font-weight: 800; color: #0f172a;">${numSocio}</span></p>
-                        <p style="margin: 0; font-size: 14px; padding: 3px 0;"><strong style="color: #475569;">Fecha de alta:</strong> ${fechaFormateada}</p>
-                    </div>
-
-                    <p style="font-size: 14px; line-height: 1.6; color: #334155; margin-bottom: 12px;">Próximamente recibirás información sobre actividades, eventos y noticias del grupo.</p>
-                    <p style="font-size: 14px; line-height: 1.6; color: #334155; margin-bottom: 25px;">Si tienes alguna pregunta, no dudes en contactarnos respondiendo a este correo.</p>
-                    
-                    <p style="font-size: 15px; font-weight: bold; color: #0f172a; margin-bottom: 4px;">¡Gracias por ser parte!</p>
-                    <p style="font-size: 14px; color: #64748b; margin: 0;">Un saludo,<br><strong style="color: #0f172a;">Equipo de Valores en Juego</strong></p>
-                </div>
-            `
+            template: 'bienvenida-socios', // Revisa que este nombre coincida EXACTAMENTE con el de tu panel web
+            bindings: {
+                nombre_socio: nombre,
+                num_socio: String(numSocio),
+                fecha_alta: fechaFormateada
+            }
         };
 
-        // Usamos un proxy directo codificando la URL destino
-        const targetUrl = 'https://api.resend.com/emails';
-        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
-
         try {
-            const response = await fetch(proxyUrl, {
+            const response = await fetch('https://api.resend.com/emails', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${RESEND_API_KEY}`,
@@ -763,23 +750,21 @@
             });
 
             if (response.ok) {
-                console.log("✅ Correo de bienvenida enviado con éxito a través de Resend.");
+                const resData = await response.json();
+                console.log("✅ ¡Correo de bienvenida enviado con éxito desde la plantilla de Resend!", resData);
             } else {
-                const errText = await response.text();
-                console.error("❌ Error devuelto por Resend:", errText);
-                try {
-                    const errJson = JSON.parse(errText);
-                    if(errJson.message && errJson.message.includes("restriction")) {
-                        alert("Resend restrict: Recuerda que en modo de prueba el email del socio debe ser el mismo con el que te registraste en Resend.");
-                    }
-                } catch(e) { }
+                const errJson = await response.json();
+                console.error("❌ Error de la API de Resend:", errJson);
+                
+                // Alerta en caso de restricción por estar en Modo Prueba
+                if(JSON.stringify(errJson).includes("restriction") || response.status === 403) {
+                    alert("Aviso de Resend: Mientras tu cuenta esté en modo Sandbox, solo puedes enviar el alta al correo con el que te registraste en Resend.");
+                }
             }
         } catch (err) {
-            console.error("❌ Error de red:", err);
+            console.error("❌ Error físico de red al conectar con Resend:", err);
         }
     }
-
-          // --- FUNCIÓN DE LECTURA Y PRECARGA DESDE GOOGLE SHEETS ---
     // --- FUNCIÓN DE LECTURA Y PRECARGA DESDE GOOGLE SHEETS (CORREGIDA) ---
     async function precargarDesdeGoogleSheet() {
         const buscadorInput = document.getElementById('sheet-buscar-identificador').value.trim().toLowerCase();
