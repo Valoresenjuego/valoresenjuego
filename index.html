@@ -69,6 +69,7 @@
         </form>
     </div>
 </div>
+
 <div id="modalDifusion" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-[60] items-center justify-center p-4">
     <div class="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8">
         <div class="flex justify-between items-center mb-6">
@@ -96,6 +97,7 @@
         </div>
     </div>
 </div>
+
 <nav class="bg-white border-b border-slate-100 sticky top-0 z-40">
     <div class="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center">
         <div class="flex items-center gap-2">
@@ -199,7 +201,7 @@
                 </tr>
             </thead>
             <tbody id="tabla-socios" class="md:divide-y md:divide-slate-50 text-[11px]">
-                </tbody>
+            </tbody>
         </table>
     </div>
 </main>
@@ -237,9 +239,22 @@
     </div>
 </div>
 
-
 <div id="modalNuevoSocio" class="fixed inset-0 bg-slate-900/80 hidden z-50 items-center justify-center p-4">
     <div class="bg-white w-full max-w-2xl rounded-[2.5rem] p-6 sm:p-10 max-h-[90vh] overflow-y-auto custom-scrollbar">
+        
+        <div class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col sm:flex-row gap-2 items-center justify-between">
+            <div class="text-center sm:text-left">
+                <p class="text-[10px] font-black text-amber-900 uppercase">Precargar desde Google Sheets</p>
+                <p class="text-[9px] text-amber-700 font-bold uppercase">Introduce DNI o Email para importar datos</p>
+            </div>
+            <div class="flex gap-2 w-full sm:w-auto">
+                <input type="text" id="sheet-buscar-identificador" placeholder="DNI o Email..." class="p-3 bg-white border border-amber-300 rounded-xl font-bold text-xs outline-none flex-1 sm:w-48">
+                <button type="button" onclick="precargarDesdeGoogleSheet()" id="btn-precargar-sheet" class="bg-amber-600 hover:bg-amber-700 text-white font-black uppercase text-[10px] px-4 py-3 rounded-xl transition-all whitespace-nowrap">
+                    Buscar
+                </button>
+            </div>
+        </div>
+
         <form id="formNuevoSocio" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class="col-span-full flex justify-between items-center mb-4">
                 <h2 class="font-black uppercase text-lg tracking-tighter">Alta de Nuevo Socio</h2>
@@ -300,6 +315,9 @@
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhlZ2lreG92Ymp0dGFpbG5hc3NyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4MDA1OTMsImV4cCI6MjA5MzM3NjU5M30.tufFxLYUJ8wdDsFtWW4wL7Z1w3TMeUw3CRbNkHSp58w";
     const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
+    // --- CONFIGURACIÓN DE TU LLAVE REAL DE RESEND ---
+    const RESEND_API_KEY = 're_7nSQ7m1u_28hqvH6PBvQ5DNam8V6f45yv';
+
     let listaSocios = [];
     let listaPagos = [];
     let listaBar = [];
@@ -324,8 +342,7 @@
         } catch (err) { console.error(err); }
     }
 
-    // --- FUNCIONES DE FILTRADO (LO QUE NO FUNCIONABA) ---
-
+    // --- FUNCIONES DE FILTRADO ---
     function filtrarEstado(est, el) {
         document.querySelectorAll('.flex.bg-slate-200\\/50 button').forEach(b => b.classList.remove('filter-btn-active'));
         if(el) el.classList.add('filter-btn-active');
@@ -336,7 +353,6 @@
         document.querySelectorAll('.flex.bg-slate-200\\/50 button').forEach(b => b.classList.remove('filter-btn-active'));
         if(el) el.classList.add('filter-btn-active');
         
-        // Filtra socios activos que NO tengan el pago del mes actual
         const impagados = listaSocios.filter(s => {
             if (s.estado !== 'ACTIVO') return false;
             const status = obtenerEstatusPago(s.num_socio);
@@ -344,96 +360,86 @@
         });
         renderizarTabla(impagados);
     }
-// Esta función ahora solo abre el modal y prepara los meses
-// 1. Prepara el modal con las opciones de meses
-function enviarAvisoCuota() {
-    const s = document.getElementById('difusion-periodo');
-    const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-    const hoy = new Date();
-    s.innerHTML = "";
-    
-    // Generamos 4 opciones: Mes anterior, Actual, y los 2 siguientes
-    for (let i = -1; i < 3; i++) {
-        let d = new Date(hoy.getFullYear(), hoy.getMonth() + i, 1);
-        let txt = `${meses[d.getMonth()]} ${d.getFullYear()}`.toUpperCase();
-        s.add(new Option(txt, txt));
-    }
-    s.selectedIndex = 1; // Selecciona el mes actual por defecto
-    
-    mostrarModal('modalDifusion');
-}
 
-// 2. Ejecuta el envío masivo REAL
-async function ejecutarEnvioMasivo() {
-    const periodoSeleccionado = document.getElementById('difusion-periodo').value;
-    
-    // FILTRO REAL: Solo socios activos que tengan email registrado
-    const sociosADifundir = listaSocios.filter(s => s.estado === 'ACTIVO' && s.email && s.email.trim() !== '');
-
-    if (sociosADifundir.length === 0) {
-        alert("No se encontraron socios activos con correo electrónico.");
-        return;
-    }
-
-    if (!confirm(`VAS A ENVIAR ${sociosADifundir.length} CORREOS para el periodo ${periodoSeleccionado}.\n\n¿Estás totalmente seguro?`)) return;
-
-    const btn = document.getElementById('btn-lanzar-difusion');
-    const textoOriginal = btn.innerHTML;
-
-    btn.disabled = true;
-    btn.innerHTML = "Iniciando difusión...";
-    
-    let enviados = 0;
-    let errores = 0;
-
-    for (const socio of sociosADifundir) {
-        try {
-            // Actualizamos el botón con el progreso real
-            btn.innerHTML = `Enviando ${enviados + 1} de ${sociosADifundir.length}...`;
-
-            const templateParams = {
-                to_name: socio.nombre,
-                email_socio: socio.email, // Tu variable en EmailJS
-                mes_actual: periodoSeleccionado // Ya viene en MAYÚSCULAS del selector
-            };
-
-            await emailjs.send(
-                "service_kyboqyj", 
-                "template_r6bmf2v", 
-                templateParams
-            );
-
-            enviados++;
-            
-            // Pausa de seguridad para evitar bloqueos (0.5 segundos entre correos)
-            await new Promise(resolve => setTimeout(resolve, 500)); 
-
-        } catch (error) {
-            console.error(`Error enviando a ${socio.email}:`, error);
-            errores++;
+    function enviarAvisoCuota() {
+        const s = document.getElementById('difusion-periodo');
+        const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+        const hoy = new Date();
+        s.innerHTML = "";
+        
+        for (let i = -1; i < 3; i++) {
+            let d = new Date(hoy.getFullYear(), hoy.getMonth() + i, 1);
+            let txt = `${meses[d.getMonth()]} ${d.getFullYear()}`.toUpperCase();
+            s.add(new Option(txt, txt));
         }
+        s.selectedIndex = 1; 
+        
+        mostrarModal('modalDifusion');
     }
 
-    alert(`¡Difusión finalizada!\n\n✅ Éxito: ${enviados}\n❌ Fallidos: ${errores}`);
-    
-    btn.disabled = false;
-    btn.innerHTML = textoOriginal;
-    cerrarModal('modalDifusion');
-}
-    // --- FUNCIONES DE EDICIÓN Y FICHA ---
+    async function ejecutarEnvioMasivo() {
+        const periodoSeleccionado = document.getElementById('difusion-periodo').value;
+        const sociosADifundir = listaSocios.filter(s => s.estado === 'ACTIVO' && s.email && s.email.trim() !== '');
 
+        if (sociosADifundir.length === 0) {
+            alert("No se encontraron socios activos con correo electrónico.");
+            return;
+        }
+
+        if (!confirm(`VAS A ENVIAR ${sociosADifundir.length} CORREOS para el periodo ${periodoSeleccionado}.\n\n¿Estás totalmente seguro?`)) return;
+
+        const btn = document.getElementById('btn-lanzar-difusion');
+        const textoOriginal = btn.innerHTML;
+
+        btn.disabled = true;
+        btn.innerHTML = "Iniciando difusión...";
+        
+        let enviados = 0;
+        let errores = 0;
+
+        for (const socio of sociosADifundir) {
+            try {
+                btn.innerHTML = `Enviando ${enviados + 1} de ${sociosADifundir.length}...`;
+
+                const templateParams = {
+                    to_name: socio.nombre,
+                    email_socio: socio.email, 
+                    mes_actual: periodoSeleccionado 
+                };
+
+                await emailjs.send(
+                    "service_kyboqyj", 
+                    "template_r6bmf2v", 
+                    templateParams
+                );
+
+                enviados++;
+                await new Promise(resolve => setTimeout(resolve, 500)); 
+
+            } catch (error) {
+                console.error(`Error enviando a ${socio.email}:`, error);
+                errores++;
+            }
+        }
+
+        alert(`¡Difusión finalizada!\n\n✅ Éxito: ${enviados}\n❌ Fallidos: ${errores}`);
+        
+        btn.disabled = false;
+        btn.innerHTML = textoOriginal;
+        cerrarModal('modalDifusion');
+    }
+
+    // --- FUNCIONES DE EDICIÓN Y FICHA ---
     async function abrirFichaSocio(id) {
         const socio = listaSocios.find(s => s.id === id);
         if(!socio) return;
 
-        // Rellenar campos del modal de edición
         document.getElementById('ficha-num-titulo').innerText = `SOCIO Nº ${socio.num_socio}`;
         document.getElementById('edit-id-interno').value = socio.id;
         document.getElementById('edit-nombre').value = socio.nombre;
         document.getElementById('edit-apellidos').value = socio.apellidos;
         document.getElementById('edit-estado').value = socio.estado;
 
-        // Cargar historial de pagos de este socio
         const historialDiv = document.getElementById('historial-pagos-lista');
         const susPagos = listaPagos.filter(p => p.num_socio === socio.num_socio);
         
@@ -448,7 +454,6 @@ async function ejecutarEnvioMasivo() {
         mostrarModal('modalFicha');
     }
 
-    // --- GUARDAR CAMBIOS DE EDICIÓN ---
     document.getElementById('formEditarSocio').addEventListener('submit', async (e) => {
         e.preventDefault();
         const id = document.getElementById('edit-id-interno').value;
@@ -464,12 +469,11 @@ async function ejecutarEnvioMasivo() {
             alert("Error al actualizar: " + error.message);
         } else {
             cerrarModal('modalFicha');
-            inicializarApp(); // Recarga los datos y la tabla
+            inicializarApp(); 
         }
     });
 
-    // --- RESTO DE FUNCIONES (STATS, TABLA, PAGOS) ---
-
+    // --- MANEJO DE STATS, TABLA Y GRÁFICOS ---
     function actualizarStats(gastos) {
         const totalCuotas = listaPagos.reduce((acc, p) => acc + (Number(p.importe) || 0), 0);
         const totalBar = listaBar.reduce((acc, b) => acc + (Number(b.importe) || 0), 0);
@@ -485,46 +489,46 @@ async function ejecutarEnvioMasivo() {
         document.getElementById('stat-balance').innerText = neto.toFixed(2) + "€";
     }
 
-   function renderizarTabla(datos) {
-    const tbody = document.getElementById('tabla-socios');
-    tbody.innerHTML = datos.map(s => {
-        const status = obtenerEstatusPago(s.num_socio);
-        const semaforo = obtenerSemaforoAntiguedad(s.fecha_alta);
-        return `
-        <tr class="hover:bg-slate-50 transition-colors">
-            <td data-label="Nº Socio" class="px-6 py-4 text-center font-black md:border-b">${s.num_socio}</td>
-            <td data-label="Socio" class="px-6 py-4 md:border-b">
-                <div class="flex flex-col">
-                    <span class="font-bold text-slate-900">${s.nombre} ${s.apellidos}</span>
-                    <span class="text-[8px] text-slate-400 font-bold uppercase tracking-widest">${s.cargo || ''}</span>
-                </div>
-            </td>
-            <td data-label="Antigüedad" class="px-6 py-4 text-center md:border-b">
-                <div class="flex flex-col items-end md:items-center">
-                    <div class="flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full ${semaforo.color} shadow-sm"></span>
-                        <span class="font-bold text-[10px] text-slate-500">${s.fecha_alta ? s.fecha_alta.split('-').reverse().join('-') : '---'}</span>
+    function renderizarTabla(datos) {
+        const tbody = document.getElementById('tabla-socios');
+        tbody.innerHTML = datos.map(s => {
+            const status = obtenerEstatusPago(s.num_socio);
+            const semaforo = obtenerSemaforoAntiguedad(s.fecha_alta);
+            return `
+            <tr class="hover:bg-slate-50 transition-colors">
+                <td data-label="Nº Socio" class="px-6 py-4 text-center font-black md:border-b">${s.num_socio}</td>
+                <td data-label="Socio" class="px-6 py-4 md:border-b">
+                    <div class="flex flex-col">
+                        <span class="font-bold text-slate-900">${s.nombre} ${s.apellidos}</span>
+                        <span class="text-[8px] text-slate-400 font-bold uppercase tracking-widest">${s.cargo || ''}</span>
                     </div>
-                    <span class="text-[9px] font-black text-slate-400 uppercase mt-1 tracking-tighter">
-                        6m: ${semaforo.meta}
-                    </span>
-                </div>
-            </td>
-            <td data-label="Estado" class="px-6 py-4 text-center md:border-b">
-                <span class="px-3 py-1 rounded-full text-[8px] text-white font-black uppercase ${s.estado === 'ACTIVO' ? 'bg-emerald-500' : 'bg-rose-500'}">${s.estado}</span>
-            </td>
-            <td data-label="Último Pago" class="px-6 py-4 text-center md:border-b">
-                <span class="px-3 py-1 rounded-full text-[8px] text-white font-black uppercase ${status.color}">${status.texto}</span>
-            </td>
-            <td class="acciones-cell px-6 py-4 text-center md:border-b flex gap-3 justify-center">
-                <button onclick="abrirPagoRapido(${s.num_socio}, '${s.nombre}')" class="bg-emerald-500 text-white w-10 h-10 rounded-xl font-bold shadow-lg shadow-emerald-100 active:scale-90 transition-all flex items-center justify-center text-lg">€</button>
-                <button onclick="abrirFichaSocio('${s.id}')" class="bg-slate-900 text-white w-10 h-10 rounded-xl shadow-lg shadow-slate-200 active:scale-90 transition-all flex items-center justify-center">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" stroke-width="2"/></svg>
-                </button>
-            </td>
-        </tr>`;
-    }).join('');
-}
+                </td>
+                <td data-label="Antigüedad" class="px-6 py-4 text-center md:border-b">
+                    <div class="flex flex-col items-end md:items-center">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full ${semaforo.color} shadow-sm"></span>
+                            <span class="font-bold text-[10px] text-slate-500">${s.fecha_alta ? s.fecha_alta.split('-').reverse().join('-') : '---'}</span>
+                        </div>
+                        <span class="text-[9px] font-black text-slate-400 uppercase mt-1 tracking-tighter">
+                            6m: ${semaforo.meta}
+                        </span>
+                    </div>
+                </td>
+                <td data-label="Estado" class="px-6 py-4 text-center md:border-b">
+                    <span class="px-3 py-1 rounded-full text-[8px] text-white font-black uppercase ${s.estado === 'ACTIVO' ? 'bg-emerald-500' : 'bg-rose-500'}">${s.estado}</span>
+                </td>
+                <td data-label="Último Pago" class="px-6 py-4 text-center md:border-b">
+                    <span class="px-3 py-1 rounded-full text-[8px] text-white font-black uppercase ${status.color}">${status.texto}</span>
+                </td>
+                <td class="acciones-cell px-6 py-4 text-center md:border-b flex gap-3 justify-center">
+                    <button onclick="abrirPagoRapido(${s.num_socio}, '${s.nombre}')" class="bg-emerald-500 text-white w-10 h-10 rounded-xl font-bold shadow-lg shadow-emerald-100 active:scale-90 transition-all flex items-center justify-center text-lg">€</button>
+                    <button onclick="abrirFichaSocio('${s.id}')" class="bg-slate-900 text-white w-10 h-10 rounded-xl shadow-lg shadow-slate-200 active:scale-90 transition-all flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" stroke-width="2"/></svg>
+                    </button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
 
     document.getElementById('formLogin').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -552,31 +556,26 @@ async function ejecutarEnvioMasivo() {
     }
 
     function obtenerSemaforoAntiguedad(fecha) {
-    if(!fecha) return { color: 'bg-slate-300', meta: '---' };
-    
-    const alta = new Date(fecha);
-    const hoy = new Date();
-    
-    // Calcular fecha exacta de meta (Alta + 6 meses)
-    const meta = new Date(alta);
-    meta.setMonth(meta.getMonth() + 6);
-    const metaStr = meta.toLocaleDateString('es-ES');
+        if(!fecha) return { color: 'bg-slate-300', meta: '---' };
+        
+        const alta = new Date(fecha);
+        const hoy = new Date();
+        
+        const meta = new Date(alta);
+        meta.setMonth(meta.getMonth() + 6);
+        const metaStr = meta.toLocaleDateString('es-ES');
 
-    // Diferencia en milisegundos para comparar
-    const diffMs = meta - hoy;
-    const dosSemanasMs = 14 * 24 * 60 * 60 * 1000;
+        const diffMs = meta - hoy;
+        const dosSemanasMs = 14 * 24 * 60 * 60 * 1000;
 
-    if (diffMs <= 0) {
-        // IGUAL O MAYOR A 6 MESES
-        return { color: 'bg-emerald-500', meta: metaStr }; 
-    } else if (diffMs <= dosSemanasMs) {
-        // LE QUEDAN 2 SEMANAS O MENOS
-        return { color: 'bg-amber-400', meta: metaStr };
-    } else {
-        // LE QUEDA MÁS DE 2 SEMANAS
-        return { color: 'bg-rose-500', meta: metaStr };
+        if (diffMs <= 0) {
+            return { color: 'bg-emerald-500', meta: metaStr }; 
+        } else if (diffMs <= dosSemanasMs) {
+            return { color: 'bg-amber-400', meta: metaStr };
+        } else {
+            return { color: 'bg-rose-500', meta: metaStr };
+        }
     }
-}
 
     function mostrarModal(id) { 
         document.getElementById(id).classList.remove('hidden'); 
@@ -608,357 +607,395 @@ async function ejecutarEnvioMasivo() {
     }
 
     function actualizarGraficoSocios(pagos) {
-    const c = {};
-    pagos.forEach(p => { const m = p.periodo; c[m] = (c[m] || 0) + 1; });
-    
-    // Obtenemos los últimos 6 meses con datos
-    const labels = Object.keys(c).sort((a, b) => {
-        // Opcional: añadir lógica de ordenación por fecha aquí si los periodos no vienen ordenados
-        return 0; 
-    }).slice(-6);
+        const c = {};
+        pagos.forEach(p => { const m = p.periodo; c[m] = (c[m] || 0) + 1; });
+        
+        const labels = Object.keys(c).sort((a, b) => 0).slice(-6);
 
-    const ctx = document.getElementById('chartSocios');
-    if (miGraficoSocios) miGraficoSocios.destroy();
+        const ctx = document.getElementById('chartSocios');
+        if (miGraficoSocios) miGraficoSocios.destroy();
 
-    miGraficoSocios = new Chart(ctx, {
-        type: 'line',
-        data: { 
-            labels, 
-            datasets: [{ 
-                data: labels.map(l => c[l]), 
-                borderColor: '#0f172a', 
-                backgroundColor: 'rgba(15,23,42,0.05)', 
-                fill: true, 
-                tension: 0.4, 
-                borderWidth: 4,
-                pointRadius: 6,           // Tamaño del punto
-                pointBackgroundColor: '#0f172a',
-                pointHoverRadius: 8,
-                showLine: true
-            }] 
-        },
-        options: { 
-            responsive: true, 
-            maintainAspectRatio: false, 
-            plugins: { 
-                legend: { display: false },
-                // Configuración para mostrar los números al pasar el ratón o fijos
-                tooltip: {
-                    enabled: true,
-                    callbacks: {
-                        label: function(context) {
-                            return `Socios: ${context.parsed.y}`;
+        miGraficoSocios = new Chart(ctx, {
+            type: 'line',
+            data: { 
+                labels, 
+                datasets: [{ 
+                    data: labels.map(l => c[l]), 
+                    borderColor: '#0f172a', 
+                    backgroundColor: 'rgba(15,23,42,0.05)', 
+                    fill: true, 
+                    tension: 0.4, 
+                    borderWidth: 4,
+                    pointRadius: 6,           
+                    pointBackgroundColor: '#0f172a',
+                    pointHoverRadius: 8,
+                    showLine: true
+                }] 
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                plugins: { 
+                    legend: { display: false },
+                    tooltip: {
+                        enabled: true,
+                        callbacks: {
+                            label: function(context) { return `Socios: ${context.parsed.y}`; }
                         }
                     }
-                }
-            }, 
-            scales: { 
-                y: { 
-                    display: true, // Lo activamos para que se vea la escala numérica a la izquierda
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1, // Para que no salgan decimales (1.5 socios)
-                        font: { size: 10 }
-                    },
-                    grid: { color: '#f1f5f9' }
                 }, 
-                x: { 
-                    grid: { display: false },
-                    ticks: { font: { size: 10, weight: 'bold' } }
+                scales: { 
+                    y: { 
+                        display: true, 
+                        beginAtZero: true,
+                        ticks: { stepSize: 1, font: { size: 10 } },
+                        grid: { color: '#f1f5f9' }
+                    }, 
+                    x: { 
+                        grid: { display: false },
+                        ticks: { font: { size: 10, weight: 'bold' } }
+                    } 
                 } 
-            } 
+            }
+        });
+    }
+
+    document.getElementById('formRegistrarPago').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const btn = document.getElementById('btn-confirmar-pago');
+        const numSocio = document.getElementById('pago-num-socio').value;
+        const nombreSocio = document.getElementById('pago-socio-nombre').innerText;
+        
+        const periodoRaw = document.getElementById('pago-periodo').value;
+        const periodoMayusculas = periodoRaw.toUpperCase(); 
+        
+        const importe = document.getElementById('pago-importe').value;
+        const enviarEmail = document.getElementById('check-enviar-email').checked;
+
+        btn.innerText = "PROCESANDO...";
+        btn.disabled = true;
+
+        try {
+            const { error: errorPago } = await supabaseClient
+                .from('pagos')
+                .insert([{ 
+                    num_socio: parseInt(numSocio), 
+                    periodo: periodoMayusculas, 
+                    importe: parseFloat(importe),
+                    fecha_pago: new Date().toISOString()
+                }]);
+
+            if (errorPago) throw errorPago;
+
+            if (enviarEmail) {
+                const socio = listaSocios.find(s => s.num_socio == numSocio);
+                
+                if (socio && socio.email) {
+                    const templateParams = {
+                        nombre_socio: nombreSocio,
+                        importe: importe + "€",
+                        mes_actual: periodoMayusculas, 
+                        email_socio: socio.email 
+                    };
+
+                    await emailjs.send(
+                        "service_kyboqyj", 
+                        "template_skp3ab3", 
+                        templateParams
+                    );
+                }
+            }
+
+            alert("Pago registrado como " + periodoMayusculas);
+            cerrarModal('modalPago');
+            await inicializarApp(); 
+
+        } catch (err) {
+            alert("Error: " + err.message);
+        } finally {
+            btn.innerText = "Confirmar Pago";
+            btn.disabled = false;
         }
     });
-}
 
-document.getElementById('formRegistrarPago').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const btn = document.getElementById('btn-confirmar-pago');
-    const numSocio = document.getElementById('pago-num-socio').value;
-    const nombreSocio = document.getElementById('pago-socio-nombre').innerText;
-    
-    // CAPTURAMOS EL PERIODO Y LO PASAMOS A MAYÚSCULAS AQUÍ
-    const periodoRaw = document.getElementById('pago-periodo').value;
-    const periodoMayusculas = periodoRaw.toUpperCase(); 
-    
-    const importe = document.getElementById('pago-importe').value;
-    const enviarEmail = document.getElementById('check-enviar-email').checked;
+    // --- ENVIAR CORREO DE BIENVENIDA CON LA PLANTILLA EXACTA (RESEND) ---
+    async function enviarBienvenidaResend(email, nombre, numSocio, fechaAlta) {
+        // Formateamos la fecha visualmente a DD/MM/YYYY
+        const fechaFormateada = fechaAlta ? fechaAlta.split('-').reverse().join('/') : new Date().toLocaleDateString('es-ES');
 
-    btn.innerText = "PROCESANDO...";
-    btn.disabled = true;
+        const data = {
+            from: 'Valores en Juego <onboarding@resend.dev>', 
+            to: [email],
+            subject: `¡Bienvenido/a a nuestra comunidad, ${nombre}!`,
+            html: `
+                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; max-width: 550px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 20px; background-color: #ffffff;">
+                    <p style="font-size: 16px; margin-bottom: 12px; font-weight: bold; color: #0f172a;">¡Bienvenido/a, ${nombre}!</p>
+                    <p style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">Estamos muy contentos de que te hayas unido a nuestra comunidad como <strong style="color: #0f172a;">Socio Colaborador</strong>.</p>
+                    
+                    <div style="background-color: #f8fafc; padding: 18px; border-radius: 14px; margin-bottom: 20px; border-left: 4px solid #0f172a;">
+                        <p style="margin: 0; font-size: 14px; padding: 3px 0;"><strong style="color: #475569;">Tu número de socio es:</strong> <span style="font-weight: 800; color: #0f172a;">${numSocio}</span></p>
+                        <p style="margin: 0; font-size: 14px; padding: 3px 0;"><strong style="color: #475569;">Fecha de alta:</strong> ${fechaFormateada}</p>
+                    </div>
 
-    try {
-        // 1. Registro en Supabase (Usamos periodoMayusculas)
-        const { error: errorPago } = await supabaseClient
-            .from('pagos')
-            .insert([{ 
-                num_socio: parseInt(numSocio), 
-                periodo: periodoMayusculas, 
-                importe: parseFloat(importe),
-                fecha_pago: new Date().toISOString()
+                    <p style="font-size: 14px; line-height: 1.6; color: #334155; margin-bottom: 12px;">Próximamente recibirás información sobre actividades, eventos y noticias del grupo.</p>
+                    <p style="font-size: 14px; line-height: 1.6; color: #334155; margin-bottom: 25px;">Si tienes alguna pregunta, no dudes en contactarnos respondiendo a este correo.</p>
+                    
+                    <p style="font-size: 15px; font-weight: bold; color: #0f172a; margin-bottom: 4px;">¡Gracias por ser parte!</p>
+                    <p style="font-size: 14px; color: #64748b; margin: 0;">Un saludo,<br><strong style="color: #0f172a;">Equipo de Valores en Juego</strong></p>
+                </div>
+            `
+        };
+
+        try {
+            const response = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${RESEND_API_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+            if (response.ok) {
+                console.log("✅ Correo de bienvenida enviado con éxito a través de Resend.");
+            } else {
+                const errJson = await response.json();
+                console.error("❌ Error de la API de Resend:", errJson);
+            }
+        } catch (err) {
+            console.error("❌ Error de conexión al llamar a Resend:", err);
+        }
+    }
+
+    // --- FUNCIÓN DE LECTURA Y PRECARGA DESDE GOOGLE SHEETS ---
+    async function precargarDesdeGoogleSheet() {
+        const buscadorInput = document.getElementById('sheet-buscar-identificador').value.trim().toLowerCase();
+        const btn = document.getElementById('btn-precargar-sheet');
+
+        if (!buscadorInput) {
+            alert("Por favor, introduce un DNI o un Email para realizar la búsqueda.");
+            return;
+        }
+
+        btn.innerText = "BUSCANDO...";
+        btn.disabled = true;
+
+        const SPREADSHEET_ID = '1BgSpbcMStLXMuw1UsdO3m9FVz2tAIBKtbKLsFYc3OFY';
+        const GID = '1089716968';
+        const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${GID}`;
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error("No se pudo acceder al Google Sheet. Verifica los permisos de enlace público.");
+            
+            const text = await response.text();
+            const filas = text.split('\n').map(fila => {
+                return fila.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(celda => celda.replace(/^"|"\r?$/g, '').trim());
+            });
+
+            const cabecera = filas[0].map(h => h.toLowerCase());
+            
+            const idxNombre = cabecera.findIndex(h => h.includes('nombre'));
+            const idxApellidos = cabecera.findIndex(h => h.includes('apellido'));
+            const idxDni = cabecera.findIndex(h => h.includes('dni') || h.includes('documento'));
+            const idxEmail = cabecera.findIndex(h => h.includes('email') || h.includes('correo'));
+            const idxTelefono = cabecera.findIndex(h => h.includes('telefono') || h.includes('teléfono'));
+
+            let socioEncontrado = null;
+
+            for (let i = 1; i < filas.length; i++) {
+                const fila = filas[i];
+                if (!fila || fila.length <= 1) continue;
+
+                const dniFila = idxDni !== -1 ? fila[idxDni]?.toLowerCase() : '';
+                const emailFila = idxEmail !== -1 ? fila[idxEmail]?.toLowerCase() : '';
+
+                if (dniFila === buscadorInput || emailFila === buscadorInput) {
+                    socioEncontrado = {
+                        nombre: idxNombre !== -1 ? fila[idxNombre] : '',
+                        apellidos: idxApellidos !== -1 ? fila[idxApellidos] : '',
+                        dni: idxDni !== -1 ? fila[idxDni] : '',
+                        email: idxEmail !== -1 ? fila[idxEmail] : '',
+                        telefono: idxTelefono !== -1 ? fila[idxTelefono] : ''
+                    };
+                    break;
+                }
+            }
+
+            if (!socioEncontrado) {
+                alert("⚠️ No se encontró ningún registro coincidente en tu Google Sheet.");
+                return;
+            }
+
+            const { data: existente, error: errCheck } = await supabaseClient
+                .from('socios')
+                .select('num_socio, nombre, apellidos')
+                .or(`dni.eq.${socioEncontrado.dni},email.eq.${socioEncontrado.email}`);
+
+            if (errCheck) throw errCheck;
+
+            if (existente && existente.length > 0) {
+                alert(`⛔ Este socio ya está registrado en el sistema.\nAsociado al Socio Nº ${existente[0].num_socio}: ${existente[0].nombre} ${existente[0].apellidos}`);
+                return;
+            }
+
+            document.getElementById('nuevo-nombre').value = socioEncontrado.nombre;
+            document.getElementById('nuevo-apellidos').value = socioEncontrado.apellidos;
+            document.getElementById('nuevo-dni').value = socioEncontrado.dni;
+            document.getElementById('nuevo-email').value = socioEncontrado.email;
+            document.getElementById('nuevo-telefono').value = socioEncontrado.telefono;
+            document.getElementById('nuevo-cargo').value = "Socio Colaborador";
+            document.getElementById('nuevo-fecha-alta').value = new Date().toISOString().split('T')[0];
+
+            alert("✅ Datos precargados con éxito. Listo para procesar.");
+
+        } catch (error) {
+            console.error(error);
+            alert("Error al sincronizar con Google Sheets: " + error.message);
+        } finally {
+            btn.innerText = "Buscar";
+            btn.disabled = false;
+        }
+    }
+
+    async function abrirModalNuevoSocio() {
+        const sociosValidos = listaSocios.filter(s => s.num_socio != 999);
+        const maxSocio = sociosValidos.reduce((max, s) => (s.num_socio > max ? s.num_socio : max), 0);
+        
+        let sugerencia = maxSocio + 1;
+        if (sugerencia === 999) sugerencia = 1000;
+
+        document.getElementById('nuevo-num-socio').value = sugerencia;
+        document.getElementById('nuevo-fecha-alta').value = new Date().toISOString().split('T')[0];
+        mostrarModal('modalNuevoSocio');
+    }
+
+    // --- REGISTRO DE NUEVO SOCIO DESDE EL FORMULARIO ---
+    document.getElementById('formNuevoSocio').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btn-guardar-nuevo');
+        btn.innerText = "GUARDANDO...";
+        btn.disabled = true;
+
+        const numSocioVal = parseInt(document.getElementById('nuevo-num-socio').value);
+        const dniVal = document.getElementById('nuevo-dni').value.trim();
+        const emailVal = document.getElementById('nuevo-email').value.trim();
+        const nombreVal = document.getElementById('nuevo-nombre').value.trim();
+        const fechaAltaVal = document.getElementById('nuevo-fecha-alta').value;
+        const cargoVal = document.getElementById('nuevo-cargo').value.trim();
+
+        // Verificación de duplicidad de última instancia
+        const { data: verificarDuplicado } = await supabaseClient
+            .from('socios')
+            .select('id')
+            .or(`dni.eq.${dniVal},email.eq.${emailVal}`);
+
+        if (verificarDuplicado && verificarDuplicado.length > 0) {
+            alert("Error: Este DNI o Correo ya existe en la base de datos.");
+            btn.innerText = "Registrar Socio";
+            btn.disabled = false;
+            return;
+        }
+
+        // 1. Insertar en tabla 'socios'
+        const { data: nuevoSocioCreado, error: errorSocio } = await supabaseClient
+            .from('socios')
+            .insert([{
+                num_socio: numSocioVal,
+                nombre: nombreVal,
+                apellidos: document.getElementById('nuevo-apellidos').value.trim(),
+                email: emailVal,
+                telefono: document.getElementById('nuevo-telefono').value.trim(),
+                fecha_alta: fechaAltaVal,
+                cargo: cargoVal,
+                estado: 'ACTIVO'
+            }])
+            .select();
+
+        if (errorSocio) {
+            alert("Error en tabla socios: " + errorSocio.message);
+            btn.innerText = "Registrar Socio";
+            btn.disabled = false;
+            return;
+        }
+
+        const idInterno = nuevoSocioCreado[0].id;
+
+        // 2. Insertar en tabla 'datos_privados'
+        const { error: errorPrivado } = await supabaseClient
+            .from('datos_privados')
+            .insert([{
+                socio_id: idInterno,     
+                num_socio: numSocioVal,  
+                dni: dniVal,
+                iban: '',               
+                notas_seguridad: ''     
             }]);
 
-        if (errorPago) throw errorPago;
-
-        // 2. Lógica de envío de email
-        if (enviarEmail) {
-            const socio = listaSocios.find(s => s.num_socio == numSocio);
-            
-            if (socio && socio.email) {
-                const templateParams = {
-                    nombre_socio: nombreSocio,
-                    importe: importe + "€",
-                    mes_actual: periodoMayusculas, // También irá en mayúsculas en el email
-                    email_socio: socio.email 
-                };
-
-                await emailjs.send(
-                    "service_kyboqyj", 
-                    "template_skp3ab3", 
-                    templateParams
-                );
+        if (errorPrivado) {
+            console.error("DETALLE ERROR PRIVADO:", errorPrivado);
+            alert("Socio creado, pero ocurrió un error en la tabla secundaria: " + errorPrivado.message);
+        } else {
+            // 3. Lanzar correo electrónico asíncrono si dispone de email
+            if (emailVal) {
+                await enviarBienvenidaResend(emailVal, nombreVal, numSocioVal, fechaAltaVal);
             }
+
+            cerrarModal('modalNuevoSocio');
+            document.getElementById('formNuevoSocio').reset();
+            document.getElementById('sheet-buscar-identificador').value = '';
+            await inicializarApp();
         }
-
-        alert("Pago registrado como " + periodoMayusculas);
-        cerrarModal('modalPago');
-        await inicializarApp(); 
-
-    } catch (err) {
-        alert("Error: " + err.message);
-    } finally {
-        btn.innerText = "Confirmar Pago";
-        btn.disabled = false;
-    }
-});
-// --- CONFIGURACIÓN RESEND ---
-const RESEND_API_KEY = 're_tu_clave_aqui'; // ⚠️ REEMPLAZA CON TU API KEY DE RESEND
-
-// --- FUNCIÓN PARA ENVIAR EL CORREO DE BIENVENIDA CON RESEND ---
-async function enviarBienvenidaResend(email, nombre, numSocio, fechaAlta, categoria) {
-    const data = {
-        from: 'Valores en Juego <onboarding@resend.dev>', // ⚠️ Cambia por tu dominio si lo tienes verificado
-        to: [email],
-        subject: `¡Bienvenido/a a Valores en Juego, ${nombre}! Nº Socio: ${numSocio}`,
-        html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #f1f5f9; border-radius: 24px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-                <div style="background-color: #0f172a; padding: 40px; text-align: center;">
-                    <h1 style="color: #ffffff; margin: 0; text-transform: uppercase; letter-spacing: 2px; font-size: 24px;">Valores en Juego</h1>
-                </div>
-                <div style="padding: 40px; background-color: #ffffff;">
-                    <h2 style="color: #1e293b; font-size: 20px; margin-top: 0;">¡Hola, ${nombre}!</h2>
-                    <p style="color: #64748b; line-height: 1.6; font-size: 15px;">Es un auténtico placer darte la bienvenida oficial a nuestra asociación.</p>
-                    <p style="color: #64748b; line-height: 1.6; font-size: 15px;">Tu solicitud ha sido procesada con éxito y ya formas parte activa de nuestra comunidad bajo la modalidad de <strong>${categoria}</strong>.</p>
-                    
-                    <div style="margin-top: 30px; padding: 25px; background-color: #f8fafc; border-radius: 16px; border: 1px dashed #cbd5e1;">
-                        <h3 style="margin: 0 0 15px 0; color: #0f172a; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Tus Datos de Socio</h3>
-                        <p style="margin: 0; color: #475569; font-size: 14px; padding: 4px 0;"><strong>Número de Socio:</strong> <span style="color: #0f172a; font-weight: bold;">${numSocio}</span></p>
-                        <p style="margin: 0; color: #475569; font-size: 14px; padding: 4px 0;"><strong>Fecha de Alta:</strong> ${fechaAlta.split('-').reverse().join('/')}</p>
-                        <p style="margin: 0; color: #475569; font-size: 14px; padding: 4px 0;"><strong>Categoría:</strong> ${categoria}</p>
-                        <p style="margin: 0; color: #475569; font-size: 14px; padding: 4px 0;"><strong>Estado:</strong> ACTIVO ✅</p>
-                    </div>
-                    <p style="color: #64748b; line-height: 1.6; font-size: 14px; margin-top: 25px;">Próximamente nos pondremos en contacto contigo para informarte sobre las actividades programadas y asambleas.</p>
-                </div>
-                <div style="padding: 20px; background-color: #f1f5f9; text-align: center;">
-                    <p style="margin: 0; color: #94a3b8; font-size: 11px; font-weight: bold; uppercase;">© 2026 Valores en Juego - Gestión Integral</p>
-                </div>
-            </div>
-        `
-    };
-
-    try {
-        const response = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${RESEND_API_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        });
-        if (response.ok) console.log("✅ Email de bienvenida enviado de forma directa mediante Resend.");
-        else console.error("❌ Error enviando email (Resend API):", await response.json());
-    } catch (err) {
-        console.error("❌ Error de red en Resend:", err);
-    }
-}
-
-// --- FUNCIÓN DE LECTURA Y PRECARGA DESDE GOOGLE SHEETS ---
-// Función para abrir el modal y calcular el siguiente número de socio ignorando el 999
-async function abrirModalNuevoSocio() {
-    // 1. Filtramos la lista para ignorar al 999 antes de buscar el máximo
-    const sociosValidos = listaSocios.filter(s => s.num_socio != 999);
-    
-    // 2. Buscamos el número más alto entre los socios válidos
-    const maxSocio = sociosValidos.reduce((max, s) => (s.num_socio > max ? s.num_socio : max), 0);
-    
-    // 3. Sugerimos el siguiente (si por casualidad diera 999, saltamos al 1000)
-    let sugerencia = maxSocio + 1;
-    if (sugerencia === 999) sugerencia = 1000;
-
-    document.getElementById('nuevo-num-socio').value = sugerencia;
-    
-    // Ponemos la fecha de hoy por defecto
-    document.getElementById('nuevo-fecha-alta').value = new Date().toISOString().split('T')[0];
-    
-    mostrarModal('modalNuevoSocio');
-}
-
-document.getElementById('formNuevoSocio').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById('btn-guardar-nuevo');
-    btn.innerText = "GUARDANDO...";
-    btn.disabled = true;
-
-    const numSocioVal = parseInt(document.getElementById('nuevo-num-socio').value);
-    const dniVal = document.getElementById('nuevo-dni').value;
-
-    // 1. Insertamos en 'socios' y pedimos que nos devuelva el registro creado (.select())
-    const { data: nuevoSocioCreado, error: errorSocio } = await supabaseClient
-        .from('socios')
-        .insert([{
-            num_socio: numSocioVal,
-            nombre: document.getElementById('nuevo-nombre').value,
-            apellidos: document.getElementById('nuevo-apellidos').value,
-            email: document.getElementById('nuevo-email').value,
-            telefono: document.getElementById('nuevo-telefono').value,
-            fecha_alta: document.getElementById('nuevo-fecha-alta').value,
-            cargo: document.getElementById('nuevo-cargo').value,
-            estado: 'ACTIVO'
-        }])
-        .select(); // IMPORTANTE: Esto nos devuelve el socio con su socio_id generado
-
-    if (errorSocio) {
-        alert("Error en tabla socios: " + errorSocio.message);
+        
         btn.innerText = "Registrar Socio";
         btn.disabled = false;
-        return;
-    }
-
-    // Obtenemos el ID interno que acaba de generar la base de datos
-    const idInterno = nuevoSocioCreado[0].id;
-
-    // 2. Insertamos en 'datos_privados' enviando TODOS los campos obligatorios
-    const { error: errorPrivado } = await supabaseClient
-        .from('datos_privados')
-        .insert([{
-            socio_id: idInterno,     // Cumplimos con la restricción Not Null
-            num_socio: numSocioVal,  // Tu campo de referencia
-            dni: dniVal,
-            iban: '',               
-            notas_seguridad: ''     
-        }]);
-
-    if (errorPrivado) {
-        console.error("DETALLE ERROR PRIVADO:", errorPrivado);
-        alert("Socio creado, pero error en datos_privados: " + errorPrivado.message);
-    } else {
-        cerrarModal('modalNuevoSocio');
-        document.getElementById('formNuevoSocio').reset();
-        await inicializarApp();
-    }
-    
-    btn.innerText = "Registrar Socio";
-    btn.disabled = false;
-});
-			
-
-// --- FIN DEL BLOQUE A AÑADIR ---
-	// --- LÓGICA DEL BUSCADOR ---
-document.getElementById('buscador').addEventListener('input', (e) => {
-    const termino = e.target.value.toLowerCase();
-    
-    // Filtramos la lista de socios basándonos en el nombre, apellidos o número
-    const sociosFiltrados = listaSocios.filter(s => {
-        const nombreCompleto = `${s.nombre} ${s.apellidos}`.toLowerCase();
-        const numSocio = s.num_socio.toString();
-        
-        return nombreCompleto.includes(termino) || numSocio.includes(termino);
     });
-
-    // Mostramos los resultados en la tabla
-    renderizarTabla(sociosFiltrados);
-});
-function exportarSociosExcel() {
-    if (!listaSocios || listaSocios.length === 0) {
-        alert("No hay datos de socios para exportar.");
-        return;
-    }
-
-    // 1. Preparamos los datos (limpiamos solo lo que queremos mostrar)
-    const datosParaExcel = listaSocios.map(s => ({
-        "Nº SOCIO": s.num_socio,
-        "NOMBRE": s.nombre,
-        "APELLIDOS": s.apellidos,
-        "EMAIL": s.email || '---',
-        "CARGO": s.cargo || 'Socio',
-        "FECHA ALTA": s.fecha_alta ? s.fecha_alta.split('-').reverse().join('/') : '---',
-        "ESTADO": s.estado
-    }));
-
-    // 2. Creamos el libro y la hoja de Excel
-    const hoja = XLSX.utils.json_to_sheet(datosParaExcel);
-    const libro = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(libro, hoja, "Socios");
-
-    // 3. Ajuste opcional: Ancho de columnas automático (básico)
-    const wscols = [
-        {wch: 10}, // Nº Socio
-        {wch: 20}, // Nombre
-        {wch: 25}, // Apellidos
-        {wch: 30}, // Email
-        {wch: 15}, // Cargo
-        {wch: 15}, // Fecha Alta
-        {wch: 10}  // Estado
-    ];
-    hoja['!cols'] = wscols;
-
-    // 4. Generamos el nombre del archivo con la fecha de hoy
-    const fecha = new Date().toISOString().slice(0, 10);
-    const nombreArchivo = `Lista_Socios_ValoresEnJuego_${fecha}.xlsx`;
-
-    // 5. Descargamos el archivo
-    XLSX.writeFile(libro, nombreArchivo);
-}
-	async function enviarBienvenidaResend(email, nombre) {
-    const API_KEY = '1'; // Tu clave de Resend
-
-    const data = {
-        from: 'Valores en Juego <onboarding@valoresenjuego.com>', // Si validas tu dominio, pon el tuyo
-        to: [email],
-        subject: `¡Bienvenido a Valores en Juego, ${nombre}!`,
-        html: `
-            <div style="font-family: sans-serif; color: #334155;">
-                <h1 style="color: #0f172a;">¡Hola, ${nombre}!</h1>
-                <p>Es un placer darte la bienvenida a nuestra asociación.</p>
-                <p>Tu registro se ha completado con éxito el día <strong>${new Date().toLocaleDateString()}</strong>.</p>
-                <br>
-                <p>Atentamente,<br><strong>La Directiva de Valores en Juego</strong></p>
-            </div>
-        `
-    };
-
-    try {
-        const res = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${API_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
+				
+	// --- LÓGICA DEL BUSCADOR ---
+    document.getElementById('buscador').addEventListener('input', (e) => {
+        const termino = e.target.value.toLowerCase();
+        
+        const sociosFiltrados = listaSocios.filter(s => {
+            const nombreCompleto = `${s.nombre} ${s.apellidos}`.toLowerCase();
+            const numSocio = s.num_socio.toString();
+            return nombreCompleto.includes(termino) || numSocio.includes(termino);
         });
 
-        if (res.ok) {
-            console.log("✅ Correo enviado con Resend");
-        } else {
-            const err = await res.json();
-            console.error("❌ Error Resend:", err);
+        renderizarTabla(sociosFiltrados);
+    });
+
+    function exportarSociosExcel() {
+        if (!listaSocios || listaSocios.length === 0) {
+            alert("No hay datos de socios para exportar.");
+            return;
         }
-    } catch (error) {
-        console.error("❌ Error de red:", error);
+
+        const datosParaExcel = listaSocios.map(s => ({
+            "Nº SOCIO": s.num_socio,
+            "NOMBRE": s.nombre,
+            "APELLIDOS": s.apellidos,
+            "EMAIL": s.email || '---',
+            "CARGO": s.cargo || 'Socio',
+            "FECHA ALTA": s.fecha_alta ? s.fecha_alta.split('-').reverse().join('/') : '---',
+            "ESTADO": s.estado
+        }));
+
+        const hoja = XLSX.utils.json_to_sheet(datosParaExcel);
+        const libro = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(libro, hoja, "Socios");
+
+        const wscols = [
+            {wch: 10}, {wch: 20}, {wch: 25}, {wch: 30}, {wch: 15}, {wch: 15}, {wch: 10}
+        ];
+        hoja['!cols'] = wscols;
+
+        const fecha = new Date().toISOString().slice(0, 10);
+        const nombreArchivo = `Lista_Socios_ValoresEnJuego_${fecha}.xlsx`;
+
+        XLSX.writeFile(libro, nombreArchivo);
     }
-}
-window.onload = verificarSesionActual;
+
+    window.onload = verificarSesionActual;
 </script>
 </body>
 </html>
