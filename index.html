@@ -723,11 +723,12 @@
     // --- ENVIAR CORREO DE BIENVENIDA CON LA PLANTILLA EXACTA (RESEND + PROXY) ---
     // --- ENVIAR CORREO DE BIENVENIDA USANDO PLANTILLA WEB DE RESEND ---
     // --- ENVIAR CORREO DE BIENVENIDA A TRAVÉS DE EMAILJS (SOLUCIÓN SIN BLOQUEO DE RED) ---
+    // --- ENVIAR CORREO DE BIENVENIDA A TRAVÉS DE EMAILJS (CON CREDENCIALES CONFIGURADAS) ---
     async function enviarBienvenidaEmailJS(email, nombre, numSocio, fechaAlta) {
         // Formateamos la fecha visualmente a DD/MM/YYYY
         const fechaFormateada = fechaAlta ? fechaAlta.split('-').reverse().join('/') : new Date().toLocaleDateString('es-ES');
 
-        // Redactamos el texto del correo directamente desde aquí
+        // Redactamos el texto que se inyectará en tu plantilla universal
         const textoBienvenida = `¡Bienvenido/a, ${nombre}!\n\n` +
                                 `Estamos muy contentos de que te hayas unido a nuestra comunidad como Socio Colaborador.\n\n` +
                                 `Tu número de socio es: ${numSocio}\n` +
@@ -738,23 +739,26 @@
                                 `Un saludo,\n` +
                                 `Equipo de Valores en Juego`;
 
-        // Preparamos los parámetros para tu plantilla universal de EmailJS
+        // Preparamos los parámetros exactos
+        // NOTA: Asegúrate de que en tu plantilla de EmailJS hayas escrito {{to_email}}, {{asunto_correo}} y {{{mensaje_personalizado}}}
         const templateParams = {
-            to_email: email, // Revisa si en tu EmailJS el campo "To Email" se llama {{to_email}} o {{email}}
+            to_email: email, 
             asunto_correo: `¡Bienvenido/a a nuestra comunidad, ${nombre}!`,
             mensaje_personalizado: textoBienvenida
         };
 
         try {
-            // REEMPLAZA "TU_ID_DE_PLANTILLA_MODIFICADA" por el ID de la plantilla que editaste en el Paso 1
+            // Pasamos tus credenciales exactas. El cuarto parámetro es tu PUBLIC KEY, crucial para que encuentre la plantilla.
             const response = await emailjs.send(
                 "service_kyboqyj", 
-                "TU_ID_DE_PLANTILLA_MODIFICADA", 
-                templateParams
+                "template_r6bmf2v", 
+                templateParams,
+                "FbPpGg9UWnWljtaHO"
             );
             console.log("✅ Correo de bienvenida enviado con éxito a través de EmailJS.", response.status, response.text);
         } catch (err) {
             console.error("❌ Error al enviar bienvenida con EmailJS:", err);
+            alert("Error al enviar el correo de bienvenida. Revisa si las variables internas de la plantilla coinciden.");
         }
     }
     // --- FUNCIÓN DE LECTURA Y PRECARGA DESDE GOOGLE SHEETS (CORREGIDA) ---
