@@ -239,6 +239,46 @@
 
 <div id="modalNuevoSocio" class="fixed inset-0 bg-slate-900/80 hidden z-50 items-center justify-center p-4">
     <div class="bg-white w-full max-w-2xl rounded-[2.5rem] p-6 sm:p-10 max-h-[90vh] overflow-y-auto custom-scrollbar">
+        
+        <div class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col sm:flex-row gap-2 items-center justify-between">
+            <div class="text-center sm:text-left">
+                <p class="text-[10px] font-black text-amber-900 uppercase">Precargar desde Google Sheets</p>
+                <p class="text-[9px] text-amber-700 font-bold uppercase">Introduce DNI o Email para importar datos</p>
+            </div>
+            <div class="flex gap-2 w-full sm:w-auto">
+                <input type="text" id="sheet-buscar-identificador" placeholder="DNI o Email..." class="p-3 bg-white border border-amber-300 rounded-xl font-bold text-xs outline-none flex-1 sm:w-48">
+                <button type="button" onclick="precargarDesdeGoogleSheet()" id="btn-precargar-sheet" class="bg-amber-600 hover:bg-amber-700 text-white font-black uppercase text-[10px] px-4 py-3 rounded-xl transition-all whitespace-nowrap">
+                    Buscar
+                </button>
+            </div>
+        </div>
+
+        <form id="formNuevoSocio" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="col-span-full flex justify-between items-center mb-2">
+                <h2 class="font-black uppercase text-lg tracking-tighter">Alta de Nuevo Socio</h2>
+                <button type="button" onclick="cerrarModal('modalNuevoSocio')" class="text-slate-300 text-3xl">&times;</button>
+            </div>
+            <div class="space-y-1">
+                <label class="text-[9px] font-black text-slate-400 ml-2 uppercase">Nº Socio (Auto)</label>
+                <input type="number" id="nuevo-num-socio" readonly class="w-full p-4 bg-slate-100 rounded-2xl font-black">
+            </div>
+            <div class="space-y-1">
+                <label class="text-[9px] font-black text-slate-400 ml-2 uppercase">Categoría</label>
+                <input type="text" id="nuevo-cargo" value="SOCIO COLABORATIVO" class="w-full p-4 bg-slate-50 rounded-2xl font-bold">
+            </div>
+            <input type="text" id="nuevo-nombre" placeholder="Nombre" required class="w-full p-4 bg-slate-50 rounded-2xl font-bold">
+            <input type="text" id="nuevo-apellidos" placeholder="Apellidos" required class="w-full p-4 bg-slate-50 rounded-2xl font-bold">
+            <input type="text" id="nuevo-dni" placeholder="DNI" required class="w-full p-4 bg-slate-50 rounded-2xl font-bold">
+            <input type="text" id="nuevo-email" placeholder="Email" class="w-full p-4 bg-slate-50 rounded-2xl font-bold">
+            <input type="text" id="nuevo-telefono" placeholder="Teléfono" class="w-full p-4 bg-slate-50 rounded-2xl font-bold">
+            <input type="date" id="nuevo-fecha-alta" class="w-full p-4 bg-slate-50 rounded-2xl font-bold">
+            
+            <button type="submit" id="btn-guardar-nuevo" class="col-span-full py-5 bg-slate-900 text-white font-black rounded-2xl uppercase tracking-widest mt-4 shadow-xl">Registrar Socio</button>
+        </form>
+    </div>
+</div>
+<!--	<div id="modalNuevoSocio" class="fixed inset-0 bg-slate-900/80 hidden z-50 items-center justify-center p-4">
+    <div class="bg-white w-full max-w-2xl rounded-[2.5rem] p-6 sm:p-10 max-h-[90vh] overflow-y-auto custom-scrollbar">
         <form id="formNuevoSocio" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class="col-span-full flex justify-between items-center mb-4">
                 <h2 class="font-black uppercase text-lg tracking-tighter">Alta de Nuevo Socio</h2>
@@ -262,7 +302,7 @@
             <button type="submit" id="btn-guardar-nuevo" class="col-span-full py-5 bg-slate-900 text-white font-black rounded-2xl uppercase tracking-widest mt-4 shadow-xl">Registrar Socio</button>
         </form>
     </div>
-</div>
+</div> DESMARCAR NUEVO-->
 
 <div id="modalFicha" class="fixed inset-0 bg-slate-900/80 hidden z-50 items-center justify-center p-4">
     <div class="bg-white w-full max-w-xl rounded-[2.5rem] p-8 max-h-[85vh] overflow-y-auto custom-scrollbar">
@@ -731,28 +771,159 @@ document.getElementById('formRegistrarPago').addEventListener('submit', async (e
         btn.disabled = false;
     }
 });
-// --- PEGA EL SIGUIENTE CÓDIGO AQUÍ (Antes de window.onload) ---
+// --- CONFIGURACIÓN RESEND ---
+const RESEND_API_KEY = 're_tu_clave_aqui'; // ⚠️ REEMPLAZA CON TU API KEY DE RESEND
 
-// Función para abrir el modal y calcular el siguiente número de socio ignorando el 999
-async function abrirModalNuevoSocio() {
-    // 1. Filtramos la lista para ignorar al 999 antes de buscar el máximo
-    const sociosValidos = listaSocios.filter(s => s.num_socio != 999);
-    
-    // 2. Buscamos el número más alto entre los socios válidos
-    const maxSocio = sociosValidos.reduce((max, s) => (s.num_socio > max ? s.num_socio : max), 0);
-    
-    // 3. Sugerimos el siguiente (si por casualidad diera 999, saltamos al 1000)
-    let sugerencia = maxSocio + 1;
-    if (sugerencia === 999) sugerencia = 1000;
+// --- FUNCIÓN PARA ENVIAR EL CORREO DE BIENVENIDA CON RESEND ---
+async function enviarBienvenidaResend(email, nombre, numSocio, fechaAlta, categoria) {
+    const data = {
+        from: 'Valores en Juego <onboarding@resend.dev>', // ⚠️ Cambia por tu dominio si lo tienes verificado
+        to: [email],
+        subject: `¡Bienvenido/a a Valores en Juego, ${nombre}! Nº Socio: ${numSocio}`,
+        html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #f1f5f9; border-radius: 24px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                <div style="background-color: #0f172a; padding: 40px; text-align: center;">
+                    <h1 style="color: #ffffff; margin: 0; text-transform: uppercase; letter-spacing: 2px; font-size: 24px;">Valores en Juego</h1>
+                </div>
+                <div style="padding: 40px; background-color: #ffffff;">
+                    <h2 style="color: #1e293b; font-size: 20px; margin-top: 0;">¡Hola, ${nombre}!</h2>
+                    <p style="color: #64748b; line-height: 1.6; font-size: 15px;">Es un auténtico placer darte la bienvenida oficial a nuestra asociación.</p>
+                    <p style="color: #64748b; line-height: 1.6; font-size: 15px;">Tu solicitud ha sido procesada con éxito y ya formas parte activa de nuestra comunidad bajo la modalidad de <strong>${categoria}</strong>.</p>
+                    
+                    <div style="margin-top: 30px; padding: 25px; background-color: #f8fafc; border-radius: 16px; border: 1px dashed #cbd5e1;">
+                        <h3 style="margin: 0 0 15px 0; color: #0f172a; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Tus Datos de Socio</h3>
+                        <p style="margin: 0; color: #475569; font-size: 14px; padding: 4px 0;"><strong>Número de Socio:</strong> <span style="color: #0f172a; font-weight: bold;">${numSocio}</span></p>
+                        <p style="margin: 0; color: #475569; font-size: 14px; padding: 4px 0;"><strong>Fecha de Alta:</strong> ${fechaAlta.split('-').reverse().join('/')}</p>
+                        <p style="margin: 0; color: #475569; font-size: 14px; padding: 4px 0;"><strong>Categoría:</strong> ${categoria}</p>
+                        <p style="margin: 0; color: #475569; font-size: 14px; padding: 4px 0;"><strong>Estado:</strong> ACTIVO ✅</p>
+                    </div>
+                    <p style="color: #64748b; line-height: 1.6; font-size: 14px; margin-top: 25px;">Próximamente nos pondremos en contacto contigo para informarte sobre las actividades programadas y asambleas.</p>
+                </div>
+                <div style="padding: 20px; background-color: #f1f5f9; text-align: center;">
+                    <p style="margin: 0; color: #94a3b8; font-size: 11px; font-weight: bold; uppercase;">© 2026 Valores en Juego - Gestión Integral</p>
+                </div>
+            </div>
+        `
+    };
 
-    document.getElementById('nuevo-num-socio').value = sugerencia;
-    
-    // Ponemos la fecha de hoy por defecto
-    document.getElementById('nuevo-fecha-alta').value = new Date().toISOString().split('T')[0];
-    
-    mostrarModal('modalNuevoSocio');
+    try {
+        const response = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${RESEND_API_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        if (response.ok) console.log("✅ Email de bienvenida enviado de forma directa mediante Resend.");
+        else console.error("❌ Error enviando email (Resend API):", await response.json());
+    } catch (err) {
+        console.error("❌ Error de red en Resend:", err);
+    }
 }
 
+// --- FUNCIÓN DE LECTURA Y PRECARGA DESDE GOOGLE SHEETS ---
+async function precargarDesdeGoogleSheet() {
+    const buscadorInput = document.getElementById('sheet-buscar-identificador').value.trim().toLowerCase();
+    const btn = document.getElementById('btn-precargar-sheet');
+
+    if (!buscadorInput) {
+        alert("Por favor, introduce un DNI o un Email para realizar la búsqueda.");
+        return;
+    }
+
+    btn.innerText = "BUSCANDO...";
+    btn.disabled = true;
+
+    // ID del documento y GID específico que has facilitado en el enlace
+    const SPREADSHEET_ID = '1BgSpbcMStLXMuw1UsdO3m9FVz2tAIBKtbKLsFYc3OFY';
+    const GID = '1089716968';
+    const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${GID}`;
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("No se pudo acceder al Google Sheet. Verifica que esté compartido públicamente.");
+        
+        const text = await response.text();
+        
+        // Convertimos el CSV plano en filas y matrices limpias
+        const filas = text.split('\n').map(fila => {
+            // Manejamos las comillas por si hay comas internas
+            return fila.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(celda => celda.replace(/^"|"\r?$/g, '').trim());
+        });
+
+        const cabecera = filas[0].map(h => h.toLowerCase());
+        
+        // Identificamos las posiciones de las columnas esenciales dinámicamente
+        const idxNombre = cabecera.findIndex(h => h.includes('nombre'));
+        const idxApellidos = cabecera.findIndex(h => h.includes('apellido'));
+        const idxDni = cabecera.findIndex(h => h.includes('dni') || h.includes('documento'));
+        const idxEmail = cabecera.findIndex(h => h.includes('email') || h.includes('correo'));
+        const idxTelefono = cabecera.findIndex(h => h.includes('telefono') || h.includes('teléfono'));
+
+        let socioEncontrado = null;
+
+        // Buscamos a partir de la fila 1 (saltando la cabecera)
+        for (let i = 1; i < filas.length; i++) {
+            const fila = filas[i];
+            if (!fila || fila.length <= 1) continue;
+
+            const dniFila = idxDni !== -1 ? fila[idxDni]?.toLowerCase() : '';
+            const emailFila = idxEmail !== -1 ? fila[idxEmail]?.toLowerCase() : '';
+
+            if (dniFila === buscadorInput || emailFila === buscadorInput) {
+                socioEncontrado = {
+                    nombre: idxNombre !== -1 ? fila[idxNombre] : '',
+                    apellidos: idxApellidos !== -1 ? fila[idxApellidos] : '',
+                    dni: idxDni !== -1 ? fila[idxDni] : '',
+                    email: idxEmail !== -1 ? fila[idxEmail] : '',
+                    telefono: idxTelefono !== -1 ? fila[idxTelefono] : ''
+                };
+                break;
+            }
+        }
+
+        if (!socioEncontrado) {
+            alert("⚠️ No se ha encontrado ningún registro que coincida con ese DNI o Email en el Google Sheet.");
+            return;
+        }
+
+        // --- VERIFICACIÓN DE DUPLICADOS EN SUPABASE ---
+        const { data: existente, error: errCheck } = await supabaseClient
+            .from('socios')
+            .select('num_socio, nombre, apellidos')
+            .or(`dni.eq.${socioEncontrado.dni},email.eq.${socioEncontrado.email}`);
+
+        if (errCheck) throw errCheck;
+
+        if (existente && existente.length > 0) {
+            alert(`⛔ El usuario ya se encuentra registrado en Supabase.\nAsociado al Socio Nº ${existente[0].num_socio}: ${existente[0].nombre} ${existente[0].apellidos}`);
+            return;
+        }
+
+        // Rellenamos el formulario automáticamente con lo recuperado
+        document.getElementById('nuevo-nombre').value = socioEncontrado.nombre;
+        document.getElementById('nuevo-apellidos').value = socioEncontrado.apellidos;
+        document.getElementById('nuevo-dni').value = socioEncontrado.dni;
+        document.getElementById('nuevo-email').value = socioEncontrado.email;
+        document.getElementById('nuevo-telefono').value = socioEncontrado.telefono;
+        document.getElementById('nuevo-cargo').value = "SOCIO COLABORATIVO"; // Forzamos el nombre solicitado
+        
+        // Fijamos de forma automática el día de hoy en formato YYYY-MM-DD
+        document.getElementById('nuevo-fecha-alta').value = new Date().toISOString().split('T')[0];
+
+        alert("✅ Datos precargados con éxito. El usuario no está duplicado.");
+
+    } catch (error) {
+        console.error(error);
+        alert("Error al sincronizar con Google Sheets: " + error.message);
+    } finally {
+        btn.innerText = "Buscar";
+        btn.disabled = false;
+    }
+}
+
+// --- REESCRITURA DE TU MANEJADOR DE ENVÍO DE FORMULARIO ---
 document.getElementById('formNuevoSocio').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('btn-guardar-nuevo');
@@ -760,22 +931,39 @@ document.getElementById('formNuevoSocio').addEventListener('submit', async (e) =
     btn.disabled = true;
 
     const numSocioVal = parseInt(document.getElementById('nuevo-num-socio').value);
-    const dniVal = document.getElementById('nuevo-dni').value;
+    const dniVal = document.getElementById('nuevo-dni').value.trim();
+    const emailVal = document.getElementById('nuevo-email').value.trim();
+    const nombreVal = document.getElementById('nuevo-nombre').value.trim();
+    const fechaAltaVal = document.getElementById('nuevo-fecha-alta').value;
+    const categoriaVal = document.getElementById('nuevo-cargo').value;
 
-    // 1. Insertamos en 'socios' y pedimos que nos devuelva el registro creado (.select())
+    // Control preventivo de última instancia por duplicados
+    const { data: verificarDuplicado, error: errDoble } = await supabaseClient
+        .from('socios')
+        .select('id')
+        .or(`dni.eq.${dniVal},email.eq.${emailVal}`);
+
+    if (verificarDuplicado && verificarDuplicado.length > 0) {
+        alert("Error: Este DNI o Email ya se encuentra dado de alta en la base de datos.");
+        btn.innerText = "Registrar Socio";
+        btn.disabled = false;
+        return;
+    }
+
+    // 1. Insertamos en 'socios'
     const { data: nuevoSocioCreado, error: errorSocio } = await supabaseClient
         .from('socios')
         .insert([{
             num_socio: numSocioVal,
-            nombre: document.getElementById('nuevo-nombre').value,
-            apellidos: document.getElementById('nuevo-apellidos').value,
-            email: document.getElementById('nuevo-email').value,
-            telefono: document.getElementById('nuevo-telefono').value,
-            fecha_alta: document.getElementById('nuevo-fecha-alta').value,
-            cargo: document.getElementById('nuevo-cargo').value,
+            nombre: nombreVal,
+            apellidos: document.getElementById('nuevo-apellidos').value.trim(),
+            email: emailVal,
+            telefono: document.getElementById('nuevo-telefono').value.trim(),
+            fecha_alta: fechaAltaVal,
+            cargo: categoriaVal,
             estado: 'ACTIVO'
         }])
-        .select(); // IMPORTANTE: Esto nos devuelve el socio con su socio_id generado
+        .select();
 
     if (errorSocio) {
         alert("Error en tabla socios: " + errorSocio.message);
@@ -784,15 +972,14 @@ document.getElementById('formNuevoSocio').addEventListener('submit', async (e) =
         return;
     }
 
-    // Obtenemos el ID interno que acaba de generar la base de datos
     const idInterno = nuevoSocioCreado[0].id;
 
-    // 2. Insertamos en 'datos_privados' enviando TODOS los campos obligatorios
+    // 2. Insertamos en 'datos_privados'
     const { error: errorPrivado } = await supabaseClient
         .from('datos_privados')
         .insert([{
-            socio_id: idInterno,     // Cumplimos con la restricción Not Null
-            num_socio: numSocioVal,  // Tu campo de referencia
+            socio_id: idInterno,     
+            num_socio: numSocioVal,  
             dni: dniVal,
             iban: '',               
             notas_seguridad: ''     
@@ -802,14 +989,21 @@ document.getElementById('formNuevoSocio').addEventListener('submit', async (e) =
         console.error("DETALLE ERROR PRIVADO:", errorPrivado);
         alert("Socio creado, pero error en datos_privados: " + errorPrivado.message);
     } else {
+        // 3. Ejecución del envío del correo tras el alta exitosa
+        if (emailVal) {
+            await enviarBienvenidaResend(emailVal, nombreVal, numSocioVal, fechaAltaVal, categoriaVal);
+        }
+        
         cerrarModal('modalNuevoSocio');
         document.getElementById('formNuevoSocio').reset();
+        document.getElementById('sheet-buscar-identificador').value = '';
         await inicializarApp();
     }
     
     btn.innerText = "Registrar Socio";
     btn.disabled = false;
 });
+			
 
 // --- FIN DEL BLOQUE A AÑADIR ---
 	// --- LÓGICA DEL BUSCADOR ---
