@@ -380,14 +380,14 @@
     // -- PRUEBA ENVIO DE PRUEBA
 	async function ejecutarEnvioMasivo() {
     const periodoSeleccionado = document.getElementById('difusion-periodo').value;
-    
-    // Forzamos un único socio de prueba con tus datos
-    const sociosADifundir = [{
-        nombre: "Alberto (Prueba)",
-        email: "albertoherreria@gmail.com"
-    }];
+    const sociosADifundir = listaSocios.filter(s => s.estado === 'ACTIVO' && s.email && s.email.trim() !== '');
 
-    if (!confirm(`MODO PRUEBA: Vas a enviar 1 correo de prueba a ${sociosADifundir[0].email} para el periodo ${periodoSeleccionado}.\n\n¿Proceder?`)) return;
+    if (sociosADifundir.length === 0) {
+        alert("No se encontraron socios activos con correo electrónico.");
+        return;
+    }
+
+    if (!confirm(`MODO PRUEBA: Se procesarán ${sociosADifundir.length} socios, pero TODOS llegarán a albertoherreria@gmail.com.\n\n¿Estás seguro?`)) return;
 
     const btn = document.getElementById('btn-lanzar-difusion');
     const textoOriginal = btn.innerHTML;
@@ -402,9 +402,12 @@
         try {
             btn.innerHTML = `Enviando ${enviados + 1} de ${sociosADifundir.length}...`;
 
+            // Añadimos alternativas para que EmailJS no se queje del destinatario vacío
             const templateParams = {
                 to_name: socio.nombre,
-                email_socio: socio.email, 
+                email_socio: "albertoherreria@gmail.com", 
+                email: "albertoherreria@gmail.com",       
+                to_email: "albertoherreria@gmail.com",    
                 mes_actual: periodoSeleccionado 
             };
 
@@ -422,6 +425,13 @@
             errores++;
         }
     }
+
+    alert(`¡Difusión de prueba finalizada!\n\n✅ Éxito: ${enviados}\n❌ Fallidos: ${errores}`);
+    
+    btn.disabled = false;
+    btn.innerHTML = textoOriginal;
+    cerrarModal('modalDifusion');
+}
 
     alert(`¡Difusión de prueba finalizada!\n\n✅ Éxito: ${enviados}\n❌ Fallidos: ${errores}`);
     
