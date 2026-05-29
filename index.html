@@ -381,9 +381,9 @@
 	async function ejecutarEnvioMasivo() {
         const periodoSeleccionado = document.getElementById('difusion-periodo').value; // Ej: "JUNIO 2026"
 
-        // MODO PRUEBA: Forzamos que la lista contenga un único envío hacia ti
+        // MODO PRUEBA: 1 único envío hacia ti
         const sociosADifundir = [{
-            nombre: "Info Valores",
+            nombre: "Roberto",
             email: "albertoherreria@gmail.com"
         }];
 
@@ -404,32 +404,8 @@
 
                 const fechaLimite = `8 de ${periodoSeleccionado}`;
 
-                // Maquetación compacta sin apenas márgenes para evitar los espacios grandes entre líneas
-                const HTMLAvisoCuota = `
-                    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; color: #1e293b; max-width: 550px; margin: 0; padding: 10px; font-size: 15px; line-height: 1.35;">
-                        Hola ${socio.nombre},<br><br>
-                        
-                        Esta semana comenzamos a recoger la cuota mensual correspondiente a <strong>${periodoSeleccionado}</strong>.<br>
-                        Importe a abonar: <strong>20,00 €</strong><br>
-                        Fecha máxima de entrega: <strong>${fechaLimite}</strong><br><br>
-                        
-                        Puedes realizar el pago de las siguientes formas:<br>
-                        • <strong>En mano:</strong> En la sede de Valores en Juego.<br>
-                        • <strong>Transferencia:</strong> <span style="font-family: monospace; font-size: 14px; background-color: #f1f5f9; padding: 1px 4px; border-radius: 3px; color: #0f172a; font-weight: 600;">ES19 0182 2298 1102 0158 4650</span><br><br>
-                        
-                        Si crees que vas a retrasarte en el pago por cualquier motivo, por favor ponte en contacto con Tesorería para informarnos.<br><br>
-                        
-                        <span style="font-size: 13px; color: #64748b; font-style: italic;">Nota: Si estás al corriente de pagos, por favor ignora este mensaje.</span><br><br>
-                        
-                        ¡Gracias por el esfuerzo de todos!<br><br>
-                        
-                        <strong>Valores en Juego</strong><br>
-                        Asociación de Juegos de Mesa<br>
-                        Santander, Cantabria<br>
-                        <a href="mailto:valoresenjuegocantabria@gmail.com" style="color: #2563eb; text-decoration: none;">valoresenjuegocantabria@gmail.com</a><br>
-                        <span style="color: #64748b;">@valoresenjuego_cantabria</span>
-                    </div>
-                `;
+                // TODO EN UNA SOLA LÍNEA SIN ESPACIOS EN BLANCO OCULTOS EN EL CÓDIGO
+                const HTMLAvisoCuota = '<div style="font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Arial,sans-serif;color:#1e293b;max-width:550px;margin:0;padding:5px;font-size:15px;line-height:1.35;">Hola ' + socio.nombre + ',<br><br>Esta semana comenzamos a recoger la cuota mensual correspondiente a <strong>' + periodoSeleccionado + '</strong>.<br>Importe a abonar: <strong>20,00 €</strong><br>Fecha máxima de entrega: <strong>' + fechaLimite + '</strong><br><br>Puedes realizar el pago de las siguientes formas:<br>• <strong>En mano:</strong> En la sede de Valores en Juego.<br>• <strong>Transferencia:</strong> <span style="font-family:monospace;font-size:14px;background-color:#f1f5f9;padding:1px 4px;border-radius:3px;color:#0f172a;font-weight:600;">ES19 0182 2298 1102 0158 4650</span><br><br>Si crees que vas a retrasarte en el pago por cualquier motivo, por favor ponte en contacto con Tesorería para informarnos.<br><br><span style="font-size:13px;color:#64748b;font-style:italic;">Nota: Si estás al corriente de pagos, por favor ignora este mensaje.</span><br><br>¡Gracias por el esfuerzo de todos!<br><br><strong>Valores en Juego</strong><br>Asociación de Juegos de Mesa<br>Santander, Cantabria<br><a href="mailto:valoresenjuegocantabria@gmail.com" style="color:#2563eb;text-decoration:none;">valoresenjuegocantabria@gmail.com</a><br><span style="color:#64748b;">@valoresenjuego_cantabria</span></div>';
 
                 const templateParams = {
                     to_email: "albertoherreria@gmail.com", 
