@@ -379,59 +379,105 @@
 
     // -- PRUEBA ENVIO DE PRUEBA
 	async function ejecutarEnvioMasivo() {
-    const periodoSeleccionado = document.getElementById('difusion-periodo').value;
-    const sociosADifundir = listaSocios.filter(s => s.estado === 'ACTIVO' && s.email && s.email.trim() !== '');
+        const periodoSeleccionado = document.getElementById('difusion-periodo').value; // Ej: "JUNIO 2026"
+        const sociosADifundir = listaSocios.filter(s => s.estado === 'ACTIVO' && s.email && s.email.trim() !== '');
 
-    if (sociosADifundir.length === 0) {
-        alert("No se encontraron socios activos con correo electrónico.");
-        return;
-    }
-
-    if (!confirm(`MODO PRUEBA: Se procesarán ${sociosADifundir.length} socios, pero TODOS llegarán a albertoherreria@gmail.com.\n\n¿Estás seguro?`)) return;
-
-    const btn = document.getElementById('btn-lanzar-difusion');
-    const textoOriginal = btn.innerHTML;
-
-    btn.disabled = true;
-    btn.innerHTML = "Iniciando difusión...";
-    
-    let enviados = 0;
-    let errores = 0;
-
-    for (const socio of sociosADifundir) {
-        try {
-            btn.innerHTML = `Enviando ${enviados + 1} de ${sociosADifundir.length}...`;
-
-            // CORRECCIÓN: Usamos 'email' que es lo que tu plantilla de EmailJS espera recibir
-            const templateParams = {
-                to_name: socio.nombre,
-                email: "albertoherreria@gmail.com",       // <--- ESTA ES LA CLAVE
-                email_socio: "albertoherreria@gmail.com", // (Por compatibilidad)
-                to_email: "albertoherreria@gmail.com",    // (Por compatibilidad)
-                mes_actual: periodoSeleccionado 
-            };
-
-            await emailjs.send(
-                "service_kyboqyj", 
-                "template_r6bmf2v", 
-                templateParams
-            );
-
-            enviados++;
-            await new Promise(resolve => setTimeout(resolve, 500)); 
-
-        } catch (error) {
-            console.error(`Error enviando a ${socio.email}:`, error);
-            errores++;
+        if (sociosADifundir.length === 0) {
+            alert("No se encontraron socios activos con correo electrónico.");
+            return;
         }
-    }
 
-    alert(`¡Difusión de prueba finalizada!\n\n✅ Éxito: ${enviados}\n❌ Fallidos: ${errores}`);
-    
-    btn.disabled = false;
-    btn.innerHTML = textoOriginal;
-    cerrarModal('modalDifusion');
-}
+        if (!confirm(`MODO PRUEBA: Se procesarán ${sociosADifundir.length} socios, pero TODOS llegarán a albertoherreria@gmail.com.\n\n¿Estás seguro?`)) return;
+
+        const btn = document.getElementById('btn-lanzar-difusion');
+        const textoOriginal = btn.innerHTML;
+
+        btn.disabled = true;
+        btn.innerHTML = "Iniciando difusión...";
+        
+        let enviados = 0;
+        let errores = 0;
+
+        for (const socio of sociosADifundir) {
+            try {
+                btn.innerHTML = `Enviando ${enviados + 1} de ${sociosADifundir.length}...`;
+
+                // Calculamos dinámicamente el "8 de MES AÑO" según lo seleccionado
+                const fechaLimite = `8 de ${periodoSeleccionado}`;
+
+                // 1. Maquetamos el mensaje exacto que has solicitado con diseño limpio en HTML
+                const HTMLAvisoCuota = `
+                    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; max-width: 550px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                        
+                        <p style="font-size: 15px; line-height: 1.5; margin: 0 0 16px 0; color: #0f172a;">
+                            Hola <strong>${socio.nombre}</strong>,
+                        </p>
+                        
+                        <p style="font-size: 15px; line-height: 1.5; margin: 0 0 16px 0; color: #334155;">
+                            Esta semana comenzamos a recoger la cuota mensual correspondiente a <strong>${periodoSeleccionado}</strong>.
+                        </p>
+                        
+                        <div style="background-color: #fff1f2; padding: 16px; border-radius: 12px; margin: 0 0 20px 0; border-left: 4px solid #f43f5e;">
+                            <p style="margin: 0 0 6px 0; font-size: 14px; color: #475569;"><strong>Importe a abonar:</strong> <span style="color: #0f172a; font-weight: 700; font-size: 16px;">20,00 €</span></p>
+                            <p style="margin: 0; font-size: 14px; color: #475569;"><strong>Fecha máxima de entrega:</strong> <span style="font-weight: 700; color: #f43f5e;">${fechaLimite}</span></p>
+                        </div>
+
+                        <p style="font-size: 15px; font-weight: 700; margin: 0 0 8px 0; color: #0f172a;">Puedes realizar el pago de las siguientes formas:</p>
+                        <ul style="font-size: 14px; line-height: 1.6; margin: 0 0 20px 0; padding-left: 20px; color: #334155;">
+                            <li style="margin-bottom: 6px;"><strong>En mano:</strong> En la sede de Valores en Juego.</li>
+                            <li><strong>Transferencia:</strong> <span style="font-family: monospace; font-size: 15px; background-color: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #0f172a; font-weight: 600;">ES19 0182 2298 1102 0158 4650</span></li>
+                        </ul>
+                        
+                        <p style="font-size: 14px; line-height: 1.5; color: #334155; margin: 0 0 16px 0;">
+                            Si crees que vas a retrasarte en el pago por cualquier motivo, por favor ponte en contacto con Tesorería para informarnos.
+                        </p>
+                        
+                        <p style="font-size: 13px; line-height: 1.5; color: #64748b; margin: 0 0 25px 0; font-style: italic; background-color: #f8fafc; padding: 10px; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                            <strong>Nota:</strong> Si estás al corriente de pagos, por favor ignora este mensaje.
+                        </p>
+                        
+                        <div style="border-top: 1px solid #f1f5f9; padding-top: 15px;">
+                            <p style="font-size: 14px; font-weight: bold; color: #0f172a; margin: 0 0 6px 0;">¡Gracias por el esfuerzo de todos!</p>
+                            
+                            <p style="font-size: 13px; color: #475569; margin: 0; line-height: 1.4;">
+                                <strong style="color: #f43f5e; font-size: 14px;">Valores en Juego</strong><br>
+                                Asociación de Juegos de Mesa<br>
+                                Santander, Cantabria<br>
+                                <a href="mailto:valoresenjuegocantabria@gmail.com" style="color: #2563eb; text-decoration: none;">valoresenjuegocantabria@gmail.com</a><br>
+                                <span style="color: #64748b;">@valoresenjuego_cantabria</span>
+                            </p>
+                        </div>
+                    </div>
+                `;
+
+                // 2. Pasamos las variables exactas que requiere tu plantilla de EmailJS
+                const templateParams = {
+                    to_email: "albertoherreria@gmail.com", // Forzado a tu correo para la prueba
+                    asunto_correo: `Cuota mensual ${periodoSeleccionado} - Valores en Juego`, 
+                    mensaje_personalizado: HTMLAvisoCuota 
+                };
+
+                await emailjs.send(
+                    "service_kyboqyj", 
+                    "template_r6bmf2v", 
+                    templateParams
+                );
+
+                enviados++;
+                await new Promise(resolve => setTimeout(resolve, 500)); 
+
+            } catch (error) {
+                console.error(`Error enviando a ${socio.email}:`, error);
+                errores++;
+            }
+        }
+
+        alert(`¡Difusión de prueba finalizada!\n\n✅ Éxito: ${enviados}\n❌ Fallidos: ${errores}`);
+        
+        btn.disabled = false;
+        btn.innerHTML = textoOriginal;
+        cerrarModal('modalDifusion');
+    }
 
     // --- FUNCIONES DE EDICIÓN Y FICHA ---
     async function abrirFichaSocio(id) {
