@@ -380,14 +380,14 @@
     // -- PRUEBA ENVIO DE PRUEBA
 	async function ejecutarEnvioMasivo() {
         const periodoSeleccionado = document.getElementById('difusion-periodo').value; // Ej: "JUNIO 2026"
-        const sociosADifundir = listaSocios.filter(s => s.estado === 'ACTIVO' && s.email && s.email.trim() !== '');
 
-        if (sociosADifundir.length === 0) {
-            alert("No se encontraron socios activos con correo electrónico.");
-            return;
-        }
+        // MODO PRUEBA: Forzamos que la lista contenga un único envío hacia ti
+        const sociosADifundir = [{
+            nombre: "Info Valores",
+            email: "albertoherreria@gmail.com"
+        }];
 
-        if (!confirm(`MODO PRUEBA: Se procesarán ${sociosADifundir.length} socios, pero TODOS llegarán a albertoherreria@gmail.com.\n\n¿Estás seguro?`)) return;
+        if (!confirm(`MODO PRUEBA: Vas a lanzar 1 único correo de prueba a albertoherreria@gmail.com.\n\n¿Proceder?`)) return;
 
         const btn = document.getElementById('btn-lanzar-difusion');
         const textoOriginal = btn.innerHTML;
@@ -402,57 +402,37 @@
             try {
                 btn.innerHTML = `Enviando ${enviados + 1} de ${sociosADifundir.length}...`;
 
-                // Calculamos dinámicamente el "8 de MES AÑO" según lo seleccionado
                 const fechaLimite = `8 de ${periodoSeleccionado}`;
 
-                // 1. Maquetamos el mensaje exacto que has solicitado con diseño limpio en HTML
+                // Maquetación compacta sin apenas márgenes para evitar los espacios grandes entre líneas
                 const HTMLAvisoCuota = `
-                    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; max-width: 550px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; color: #1e293b; max-width: 550px; margin: 0; padding: 10px; font-size: 15px; line-height: 1.35;">
+                        Hola ${socio.nombre},<br><br>
                         
-                        <p style="font-size: 15px; line-height: 1.5; margin: 0 0 16px 0; color: #0f172a;">
-                            Hola <strong>${socio.nombre}</strong>,
-                        </p>
+                        Esta semana comenzamos a recoger la cuota mensual correspondiente a <strong>${periodoSeleccionado}</strong>.<br>
+                        Importe a abonar: <strong>20,00 €</strong><br>
+                        Fecha máxima de entrega: <strong>${fechaLimite}</strong><br><br>
                         
-                        <p style="font-size: 15px; line-height: 1.5; margin: 0 0 16px 0; color: #334155;">
-                            Esta semana comenzamos a recoger la cuota mensual correspondiente a <strong>${periodoSeleccionado}</strong>.
-                        </p>
+                        Puedes realizar el pago de las siguientes formas:<br>
+                        • <strong>En mano:</strong> En la sede de Valores en Juego.<br>
+                        • <strong>Transferencia:</strong> <span style="font-family: monospace; font-size: 14px; background-color: #f1f5f9; padding: 1px 4px; border-radius: 3px; color: #0f172a; font-weight: 600;">ES19 0182 2298 1102 0158 4650</span><br><br>
                         
-                        <div style="background-color: #fff1f2; padding: 16px; border-radius: 12px; margin: 0 0 20px 0; border-left: 4px solid #f43f5e;">
-                            <p style="margin: 0 0 6px 0; font-size: 14px; color: #475569;"><strong>Importe a abonar:</strong> <span style="color: #0f172a; font-weight: 700; font-size: 16px;">20,00 €</span></p>
-                            <p style="margin: 0; font-size: 14px; color: #475569;"><strong>Fecha máxima de entrega:</strong> <span style="font-weight: 700; color: #f43f5e;">${fechaLimite}</span></p>
-                        </div>
-
-                        <p style="font-size: 15px; font-weight: 700; margin: 0 0 8px 0; color: #0f172a;">Puedes realizar el pago de las siguientes formas:</p>
-                        <ul style="font-size: 14px; line-height: 1.6; margin: 0 0 20px 0; padding-left: 20px; color: #334155;">
-                            <li style="margin-bottom: 6px;"><strong>En mano:</strong> En la sede de Valores en Juego.</li>
-                            <li><strong>Transferencia:</strong> <span style="font-family: monospace; font-size: 15px; background-color: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #0f172a; font-weight: 600;">ES19 0182 2298 1102 0158 4650</span></li>
-                        </ul>
+                        Si crees que vas a retrasarte en el pago por cualquier motivo, por favor ponte en contacto con Tesorería para informarnos.<br><br>
                         
-                        <p style="font-size: 14px; line-height: 1.5; color: #334155; margin: 0 0 16px 0;">
-                            Si crees que vas a retrasarte en el pago por cualquier motivo, por favor ponte en contacto con Tesorería para informarnos.
-                        </p>
+                        <span style="font-size: 13px; color: #64748b; font-style: italic;">Nota: Si estás al corriente de pagos, por favor ignora este mensaje.</span><br><br>
                         
-                        <p style="font-size: 13px; line-height: 1.5; color: #64748b; margin: 0 0 25px 0; font-style: italic; background-color: #f8fafc; padding: 10px; border-radius: 8px; border: 1px dashed #cbd5e1;">
-                            <strong>Nota:</strong> Si estás al corriente de pagos, por favor ignora este mensaje.
-                        </p>
+                        ¡Gracias por el esfuerzo de todos!<br><br>
                         
-                        <div style="border-top: 1px solid #f1f5f9; padding-top: 15px;">
-                            <p style="font-size: 14px; font-weight: bold; color: #0f172a; margin: 0 0 6px 0;">¡Gracias por el esfuerzo de todos!</p>
-                            
-                            <p style="font-size: 13px; color: #475569; margin: 0; line-height: 1.4;">
-                                <strong style="color: #f43f5e; font-size: 14px;">Valores en Juego</strong><br>
-                                Asociación de Juegos de Mesa<br>
-                                Santander, Cantabria<br>
-                                <a href="mailto:valoresenjuegocantabria@gmail.com" style="color: #2563eb; text-decoration: none;">valoresenjuegocantabria@gmail.com</a><br>
-                                <span style="color: #64748b;">@valoresenjuego_cantabria</span>
-                            </p>
-                        </div>
+                        <strong>Valores en Juego</strong><br>
+                        Asociación de Juegos de Mesa<br>
+                        Santander, Cantabria<br>
+                        <a href="mailto:valoresenjuegocantabria@gmail.com" style="color: #2563eb; text-decoration: none;">valoresenjuegocantabria@gmail.com</a><br>
+                        <span style="color: #64748b;">@valoresenjuego_cantabria</span>
                     </div>
                 `;
 
-                // 2. Pasamos las variables exactas que requiere tu plantilla de EmailJS
                 const templateParams = {
-                    to_email: "albertoherreria@gmail.com", // Forzado a tu correo para la prueba
+                    to_email: "albertoherreria@gmail.com", 
                     asunto_correo: `Cuota mensual ${periodoSeleccionado} - Valores en Juego`, 
                     mensaje_personalizado: HTMLAvisoCuota 
                 };
