@@ -402,12 +402,12 @@
         try {
             btn.innerHTML = `Enviando ${enviados + 1} de ${sociosADifundir.length}...`;
 
-            // Añadimos alternativas para que EmailJS no se queje del destinatario vacío
+            // CORRECCIÓN: Usamos 'email' que es lo que tu plantilla de EmailJS espera recibir
             const templateParams = {
                 to_name: socio.nombre,
-                email_socio: "albertoherreria@gmail.com", 
-                email: "albertoherreria@gmail.com",       
-                to_email: "albertoherreria@gmail.com",    
+                email: "albertoherreria@gmail.com",       // <--- ESTA ES LA CLAVE
+                email_socio: "albertoherreria@gmail.com", // (Por compatibilidad)
+                to_email: "albertoherreria@gmail.com",    // (Por compatibilidad)
                 mes_actual: periodoSeleccionado 
             };
 
@@ -425,13 +425,6 @@
             errores++;
         }
     }
-
-    alert(`¡Difusión de prueba finalizada!\n\n✅ Éxito: ${enviados}\n❌ Fallidos: ${errores}`);
-    
-    btn.disabled = false;
-    btn.innerHTML = textoOriginal;
-    cerrarModal('modalDifusion');
-}
 
     alert(`¡Difusión de prueba finalizada!\n\n✅ Éxito: ${enviados}\n❌ Fallidos: ${errores}`);
     
