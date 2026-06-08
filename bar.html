@@ -276,67 +276,92 @@
         }
 
         // --- CRUD ---
-        document.getElementById('formBar').onsubmit = async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('btn-registrar');
-            btn.disabled = true;
-            btn.innerText = "Procesando...";
+document.getElementById('formBar').onsubmit = async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-registrar');
+    btn.disabled = true;
+    btn.innerText = "Procesando...";
 
-            const data = {
-                tipo: document.getElementById('tipo').value,
-                num_socio: hiddenId.value ? parseInt(hiddenId.value) : null,
-                concepto: document.getElementById('concepto').value,
-                importe: parseFloat(document.getElementById('importe_bar').value)
-            };
+    // Forzar el valor del socio. Si el campo de texto está vacío, nos aseguramos de que no envíe id antiguo
+    const socioInputVal = document.getElementById('socio_nombre_input').value.trim();
+    const hiddenIdVal = document.getElementById('socio_bar').value;
 
-            let res;
-            if (editandoID) {
-                res = await _supabase.from('pagos_bar').update(data).eq('id', editandoID);
-            } else {
-                res = await _supabase.from('pagos_bar').insert([data]);
-            }
+    const data = {
+        tipo: document.getElementById('tipo').value,
+        num_socio: (socioInputVal && hiddenIdVal) ? parseInt(hiddenIdVal) : null,
+        concepto: document.getElementById('concepto').value,
+        importe: parseFloat(document.getElementById('importe_bar').value)
+    };
 
-            if (!res.error) { 
-                cancelarEdicion(); 
-                await cargarDatos(); 
-            } else {
-                alert("Error al guardar: " + res.error.message);
-            }
-            btn.disabled = false;
-        };
-
-        function prepararEdicion(id) {
-            const p = todosLosPagos.find(item => item.id === id);
-            if(!p) return;
-            editandoID = id;
-            document.getElementById('tipo').value = p.tipo;
-            document.getElementById('socio_bar').value = p.num_socio || "";
-            document.getElementById('socio_nombre_input').value = p.num_socio ? obtenerNombreSocio(p.num_socio) : "";
-            document.getElementById('concepto').value = p.concepto;
-            document.getElementById('importe_bar').value = p.importe;
-            document.getElementById('form-titulo').innerText = "Editando Registro";
-            document.getElementById('btn-registrar').innerText = "Guardar Cambios";
-            document.getElementById('btn-cancelar').classList.remove('hidden');
-            ajustarTipo();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+    try {
+        let res;
+        if (editandoID) {
+            res = await _supabase.from('pagos_bar').update(data).eq('id', editandoID);
+        } else {
+            res = await _supabase.from('pagos_bar').insert([data]);
         }
 
-        function cancelarEdicion() {
-            editandoID = null;
-            document.getElementById('formBar').reset();
-            document.getElementById('socio_bar').value = "";
-            document.getElementById('form-titulo').innerText = "Registro de Cobro";
-            document.getElementById('btn-registrar').innerText = "Registrar Cobro";
-            document.getElementById('btn-cancelar').classList.add('hidden');
-            ajustarTipo();
+        if (!res.error) { 
+            cancelarEdicion(); 
+            await cargarDatos(); 
+        } else {
+            alert("Error al guardar: " + res.error.message);
         }
+    } catch (err) {
+        console.error(err);
+        alert("Error crítico en la conexión.");
+    } finally {
+        // Esto asegura que el botón SIEMPRE se vuelva a activar si algo falla
+        btn.disabled = false;
+        if (!editandoID) {
+            btn.innerText = "Registrar Cobro";
+        } else {
+            btn.innerText = "Guardar Cambios";
+        }
+    }
+};
 
-        async function eliminarPago(id) {
-            if(confirm("¿Eliminar registro?")) { 
-                await _supabase.from('pagos_bar').delete().eq('id', id); 
-                cargarDatos(); 
-            }
-        }
+function prepararEdicion(id) {
+    const p = todosLosPagos.find(item => item.id === id);
+    if(!p) return;
+    
+    editandoID = id;
+    document.getElementById('tipo').value = p.tipo;
+    document.getElementById('socio_bar').value = p.num_socio || "";
+    
+    // Cambiado aquí: Buscamos el socio para pintar Nombre + Apellidos completo en el input visual
+    if (p.num_socio) {
+        const s = listaSocios.find(x => x.num_socio == p.num_socio);
+        document.getElementById('socio_nombre_input').value = s ? `${s.nombre} ${s.apellidos}` : `#${p.num_socio}`;
+    } else {
+        document.getElementById('socio_nombre_input').value = "";
+    }
+    
+    document.getElementById('concepto').value = p.concepto;
+    document.getElementById('importe_bar').value = p.importe;
+    document.getElementById('form-titulo').innerText = "Editando Registro";
+    document.getElementById('btn-registrar').innerText = "Guardar Cambios";
+    document.getElementById('btn-cancelar').classList.remove('hidden');
+    
+    // Ejecutamos ajustarTipo pero SIN vaciar los datos que acabamos de cargar
+    const tipo = p.tipo;
+    const container = document.getElementById('contenedor-multiplicador');
+    container.classList.toggle('hidden', tipo !== 'INVITADO');
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelarEdicion() {
+    editandoID = null;
+    document.getElementById('formBar').reset();
+    document.getElementById('socio_bar').value = "";
+    document.getElementById('form-titulo').innerText = "Registro de Cobro";
+    document.getElementById('btn-registrar').innerText = "Registrar Cobro";
+    document.getElementById('btn-cancelar').classList.add('hidden');
+    
+    // Oculta el multiplicador manualmente para evitar el trigger de limpiar campos de ajustarTipo()
+    document.getElementById('contenedor-multiplicador').classList.add('hidden');
+}
 
         window.onload = validarAcceso;
     </script>
