@@ -349,9 +349,11 @@
          </div>
          <form id="formEditarSocio" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <input type="hidden" id="edit-id-interno">
-            <input type="text" id="edit-nombre" class="w-full p-4 bg-slate-50 rounded-2xl font-bold">
-            <input type="text" id="edit-apellidos" class="w-full p-4 bg-slate-50 rounded-2xl font-bold">
-            <select id="edit-estado" class="w-full p-4 bg-slate-50 rounded-2xl font-black text-center appearance-none">
+            <input type="text" id="edit-nombre" placeholder="Nombre" class="w-full p-4 bg-slate-50 rounded-2xl font-bold">
+            <input type="text" id="edit-apellidos" placeholder="Apellidos" class="w-full p-4 bg-slate-50 rounded-2xl font-bold">
+            <input type="email" id="edit-email" placeholder="Email" class="w-full p-4 bg-slate-50 rounded-2xl font-bold">
+            <input type="text" id="edit-telefono" placeholder="Teléfono" class="w-full p-4 bg-slate-50 rounded-2xl font-bold">
+            <select id="edit-estado" class="w-full p-4 bg-slate-50 rounded-2xl font-black text-center appearance-none col-span-full sm:col-span-1">
                 <option value="ACTIVO">✅ ACTIVO</option>
                 <option value="BAJA">❌ BAJA</option>
             </select>
@@ -560,6 +562,57 @@
         cerrarModal('modalDifusion');
     }
 
+    // --- Agrupa el historial de pagos de un socio por año, con acordeón plegable ---
+    function renderizarHistorialAgrupado(pagos) {
+        if (pagos.length === 0) {
+            return '<p class="text-center text-slate-400 text-[10px] font-bold uppercase py-4">Sin pagos registrados</p>';
+        }
+
+        const grupos = {};
+        pagos.forEach(p => {
+            const anio = p.fecha_pago ? new Date(p.fecha_pago).getFullYear() : 'Sin fecha';
+            if (!grupos[anio]) grupos[anio] = [];
+            grupos[anio].push(p);
+        });
+
+        const aniosOrdenados = Object.keys(grupos).sort((a, b) => b - a); // año más reciente primero
+        const anioMasReciente = aniosOrdenados[0];
+
+        return aniosOrdenados.map(anio => {
+            const pagosDelAnio = grupos[anio];
+            const totalAnio = pagosDelAnio.reduce((acc, p) => acc + (Number(p.importe) || 0), 0);
+            const abierto = anio === anioMasReciente; // el año más reciente empieza desplegado
+            const idGrupo = `historial-anio-${anio}`;
+
+            const filasPagos = pagosDelAnio.map(p => `
+                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <span class="font-black text-[10px] uppercase text-slate-600">${escapeHtml(p.periodo)}</span>
+                    <span class="font-black text-emerald-600">${escapeHtml(p.importe)}€</span>
+                </div>`).join('');
+
+            return `
+                <div class="border border-slate-100 rounded-2xl overflow-hidden">
+                    <button type="button" onclick="toggleHistorialAnio('${idGrupo}')" class="w-full flex justify-between items-center px-4 py-3 bg-white hover:bg-slate-50 transition-all">
+                        <span class="flex items-center gap-2 font-black text-xs uppercase text-slate-700">
+                            <svg id="${idGrupo}-icono" class="w-3 h-3 text-slate-400 transition-transform ${abierto ? 'rotate-90' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            ${escapeHtml(anio)}
+                        </span>
+                        <span class="text-[9px] font-black uppercase text-slate-400">${pagosDelAnio.length} pago(s) · ${totalAnio.toFixed(2)}€</span>
+                    </button>
+                    <div id="${idGrupo}" class="space-y-2 p-3 pt-0 ${abierto ? '' : 'hidden'}">
+                        ${filasPagos}
+                    </div>
+                </div>`;
+        }).join('<div class="h-2"></div>');
+    }
+
+    function toggleHistorialAnio(idGrupo) {
+        const contenedor = document.getElementById(idGrupo);
+        const icono = document.getElementById(`${idGrupo}-icono`);
+        contenedor.classList.toggle('hidden');
+        icono.classList.toggle('rotate-90');
+    }
+
     // --- FUNCIONES DE EDICIÓN Y FICHA ---
     async function abrirFichaSocio(id) {
         const socio = listaSocios.find(s => s.id === id);
@@ -569,6 +622,8 @@
         document.getElementById('edit-id-interno').value = socio.id;
         document.getElementById('edit-nombre').value = socio.nombre;
         document.getElementById('edit-apellidos').value = socio.apellidos;
+        document.getElementById('edit-email').value = socio.email || '';
+        document.getElementById('edit-telefono').value = socio.telefono || '';
         document.getElementById('edit-estado').value = socio.estado;
 
         const historialDiv = document.getElementById('historial-pagos-lista');
@@ -577,13 +632,7 @@
             .slice()
             .sort((a, b) => new Date(b.fecha_pago || 0) - new Date(a.fecha_pago || 0));
 
-        historialDiv.innerHTML = susPagos.length > 0
-            ? susPagos.map(p => `
-                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-100">
-                    <span class="font-black text-[10px] uppercase text-slate-600">${escapeHtml(p.periodo)}</span>
-                    <span class="font-black text-emerald-600">${escapeHtml(p.importe)}€</span>
-                </div>`).join('')
-            : '<p class="text-center text-slate-400 text-[10px] font-bold uppercase py-4">Sin pagos registrados</p>';
+        historialDiv.innerHTML = renderizarHistorialAgrupado(susPagos);
 
         mostrarModal('modalFicha');
     }
@@ -594,6 +643,8 @@
         const nuevosDatos = {
             nombre: document.getElementById('edit-nombre').value.trim(),
             apellidos: document.getElementById('edit-apellidos').value.trim(),
+            email: document.getElementById('edit-email').value.trim(),
+            telefono: document.getElementById('edit-telefono').value.trim(),
             estado: document.getElementById('edit-estado').value
         };
 
