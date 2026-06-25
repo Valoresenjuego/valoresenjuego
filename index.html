@@ -228,7 +228,7 @@
 
 <main class="max-w-7xl mx-auto p-4 md:p-8">
     <div class="mb-6 bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-        <h3 class="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">Actividad de Pagos (últimos 6 meses)</h3>
+        <h3 class="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">Socios que pagaron la cuota (últimos 6 meses)</h3>
         <div class="h-40 md:h-64">
             <canvas id="chartSocios"></canvas>
         </div>
@@ -818,24 +818,37 @@
         mostrarModal('modalPago');
     }
 
-    // --- GRÁFICO: ahora agrupado y ordenado por fecha real (fecha_pago), no por el string "periodo" ---
+    // --- GRÁFICO: agrupado por el mes que indica "periodo" (de qué cuota se trata),
+    // combinado con el año real de "fecha_pago" — porque "periodo" solo guarda el
+    // nombre del mes (ej. "JUNIO"), sin año, así que el año hay que sacarlo de fecha_pago.
     function actualizarGraficoSocios(pagos) {
+        const mesesNombres = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
         const grupos = {};
+
         pagos.forEach(p => {
-            if (!p.fecha_pago) return;
-            const d = new Date(p.fecha_pago);
-            if (isNaN(d.getTime())) return;
-            const clave = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            if (!p.periodo || !p.fecha_pago) return;
+
+            // Tomamos solo la primera palabra del periodo como nombre del mes,
+            // por si algún registro antiguo llevara también el año pegado (ej. "JUNIO 2026").
+            const mesTexto = p.periodo.trim().toUpperCase().split(' ')[0];
+            const indiceMes = mesesNombres.indexOf(mesTexto);
+            if (indiceMes === -1) return; // periodo con formato no reconocido, se ignora
+
+            const fechaRegistro = new Date(p.fecha_pago);
+            if (isNaN(fechaRegistro.getTime())) return;
+            const anio = fechaRegistro.getFullYear();
+
+            const clave = `${anio}-${String(indiceMes + 1).padStart(2, '0')}`;
             grupos[clave] = (grupos[clave] || 0) + 1;
         });
 
-        const clavesOrdenadas = Object.keys(grupos).sort(); // formato YYYY-MM ordena bien como string
+        const clavesOrdenadas = Object.keys(grupos).sort(); // formato YYYY-MM ordena bien cronológicamente
         const ultimasSeis = clavesOrdenadas.slice(-6);
 
-        const nombresMeses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+        const nombresMesesCortos = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
         const labels = ultimasSeis.map(clave => {
             const [anio, mes] = clave.split('-');
-            return `${nombresMeses[parseInt(mes, 10) - 1]} ${anio}`;
+            return `${nombresMesesCortos[parseInt(mes, 10) - 1]} ${anio}`;
         });
         const data = ultimasSeis.map(clave => grupos[clave]);
 
@@ -867,7 +880,7 @@
                     tooltip: {
                         enabled: true,
                         callbacks: {
-                            label: function(context) { return `Pagos: ${context.parsed.y}`; }
+                            label: function(context) { return `Socios que pagaron: ${context.parsed.y}`; }
                         }
                     }
                 },
