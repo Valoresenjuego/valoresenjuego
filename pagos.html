@@ -7,13 +7,14 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
-        
+
         .mes-header { cursor: pointer; transition: all 0.2s; }
         .mes-header:hover { background-color: #f1f5f9; }
-        
+
         /* Ocultar scrollbar en el nav móvil */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -25,9 +26,51 @@
             .chart-container { height: 200px; }
             td, th { padding-left: 1rem !important; padding-right: 1rem !important; }
         }
+
+        /* --- Toasts --- */
+        #toast-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-width: 360px;
+        }
+        .toast {
+            padding: 1rem 1.25rem;
+            border-radius: 1rem;
+            color: white;
+            font-weight: 700;
+            font-size: 0.75rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            animation: toast-in 0.25s ease-out;
+        }
+        .toast-success { background-color: #059669; }
+        .toast-error { background-color: #e11d48; }
+        .toast-info { background-color: #0f172a; }
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- Skeleton de carga --- */
+        .skeleton-block {
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 37%, #f1f5f9 63%);
+            background-size: 400% 100%;
+            animation: skeleton-loading 1.4s ease infinite;
+            border-radius: 1.5rem;
+        }
+        @keyframes skeleton-loading {
+            0% { background-position: 100% 50%; }
+            100% { background-position: 0 50%; }
+        }
     </style>
 </head>
 <body class="text-slate-900">
+
+<div id="toast-container"></div>
 
     <nav class="bg-white border-b border-slate-100 sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center">
@@ -37,7 +80,7 @@
                 </div>
                 <h1 class="text-sm font-black uppercase tracking-tighter hidden sm:block">Valores<span class="text-slate-400">EnJuego</span></h1>
             </div>
-            
+
             <div class="flex gap-4 overflow-x-auto no-scrollbar items-center px-4 flex-1 justify-center sm:justify-end">
                 <a href="index.html" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 whitespace-nowrap">Socios</a>
                 <a href="pagos.html" class="text-[10px] font-black uppercase tracking-widest text-slate-900 border-b-2 border-slate-900 pb-1 whitespace-nowrap">Pagos</a>
@@ -49,7 +92,7 @@
     </nav>
 
     <main class="max-w-7xl mx-auto p-4 md:p-8 space-y-6">
-        
+
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 bg-white p-4 sm:p-6 rounded-3xl border border-slate-100 shadow-sm">
                 <h3 class="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">Evolución de Ingresos</h3>
@@ -57,7 +100,7 @@
                     <canvas id="chartPagos"></canvas>
                 </div>
             </div>
-            
+
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
                 <div class="bg-slate-900 p-6 sm:p-8 rounded-3xl text-white shadow-xl flex flex-col justify-center">
                     <p class="text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Total Histórico</p>
@@ -72,16 +115,25 @@
             </div>
         </div>
 
-        <div class="relative">
-            <input type="text" id="buscador-pagos" placeholder="Buscar por socio o mes..." 
-                class="w-full p-4 pl-12 rounded-2xl border border-slate-100 shadow-sm outline-none focus:ring-2 focus:ring-slate-900 bg-white text-sm">
-            <svg class="w-5 h-5 absolute left-4 top-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="2"/>
-            </svg>
+        <div class="flex flex-col sm:flex-row gap-3">
+            <div class="relative flex-1">
+                <input type="text" id="buscador-pagos" placeholder="Buscar por socio o mes..."
+                    class="w-full p-4 pl-12 rounded-2xl border border-slate-100 shadow-sm outline-none focus:ring-2 focus:ring-slate-900 bg-white text-sm">
+                <svg class="w-5 h-5 absolute left-4 top-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="2"/>
+                </svg>
+            </div>
+            <button onclick="exportarPagosExcel()" class="bg-indigo-100 text-indigo-700 px-6 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-indigo-200 active:scale-95 transition-all flex justify-center items-center gap-2 whitespace-nowrap">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 4v-6M6 21h12a2 2 0 002-2V5a2 2 0 00-2-2H6a2 2 0 00-2 2v14a2 2 0 002 2z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Exportar Pagos
+            </button>
         </div>
 
         <div id="contenedor-pagos" class="space-y-4 pb-20">
-            </div>
+            <div class="skeleton-block h-20"></div>
+            <div class="skeleton-block h-20"></div>
+            <div class="skeleton-block h-20"></div>
+        </div>
     </main>
 
     <script>
@@ -92,50 +144,111 @@
     let todosLosPagos = [];
     let listaSocios = [];
     let miGrafico = null;
-    
-    const mesesOrden = { 
-        'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4, 'mayo': 5, 'junio': 6, 
-        'julio': 7, 'agosto': 8, 'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12 
+    let debounceBuscadorPagos = null;
+
+    const mesesOrden = {
+        'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4, 'mayo': 5, 'junio': 6,
+        'julio': 7, 'agosto': 8, 'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
     };
 
+    // --- SISTEMA DE NOTIFICACIONES (toasts) ---
+    function mostrarToast(mensaje, tipo = 'info', duracionMs = 4000) {
+        const cont = document.getElementById('toast-container');
+        const div = document.createElement('div');
+        div.className = `toast toast-${tipo}`;
+        div.innerText = mensaje;
+        cont.appendChild(div);
+        setTimeout(() => {
+            div.style.opacity = '0';
+            div.style.transition = 'opacity 0.3s';
+            setTimeout(() => div.remove(), 300);
+        }, duracionMs);
+    }
+
+    // --- ESCAPADO DE HTML para evitar inyección al renderizar datos del usuario ---
+    function escapeHtml(valor) {
+        if (valor === null || valor === undefined) return '';
+        return String(valor)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    // Devuelve un valor cronológico (año*100 + mes) para poder ordenar "MES AÑO" correctamente.
+    // Si el periodo no tiene un formato reconocible, devuelve null para tratarlo aparte
+    // (en vez de NaN, que generaría un orden indefinido al mezclarse con sort()).
     function getValCron(periodo) {
-        if (!periodo) return 0;
+        if (!periodo) return null;
         const partes = periodo.trim().toLowerCase().split(/\s+/);
-        if (partes.length < 2) return 0;
+        if (partes.length < 2) return null;
         const mes = partes[0];
-        const año = parseInt(partes[1]);
-        return (año * 100) + (mesesOrden[mes] || 0);
+        const anio = parseInt(partes[1], 10);
+        if (!mesesOrden[mes] || isNaN(anio)) return null;
+        return (anio * 100) + mesesOrden[mes];
+    }
+
+    // Genera un identificador seguro para usar en id de elementos HTML y en el atributo onclick,
+    // sin depender directamente del texto del periodo (que podría contener caracteres especiales).
+    function generarSafeId(texto, indice) {
+        const base = String(texto).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const limpio = base.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        return `${limpio || 'periodo'}-${indice}`;
     }
 
     async function cargarDatos() {
-        const [respPagos, respSocios] = await Promise.all([
-            supabaseClient.from('pagos').select('*'),
-            supabaseClient.from('socios').select('num_socio, nombre, apellidos')
-        ]);
-        if (respPagos.error || respSocios.error) return;
-        todosLosPagos = respPagos.data;
-        listaSocios = respSocios.data;
-        actualizarDashboard(todosLosPagos);
-        renderizarListaAgrupada(todosLosPagos);
+        mostrarSkeleton();
+        try {
+            const [respPagos, respSocios] = await Promise.all([
+                supabaseClient.from('pagos').select('*'),
+                supabaseClient.from('socios').select('num_socio, nombre, apellidos')
+            ]);
+
+            if (respPagos.error || respSocios.error) {
+                const mensajes = [respPagos.error?.message, respSocios.error?.message].filter(Boolean).join(' | ');
+                mostrarToast('Error al cargar los datos: ' + mensajes, 'error', 6000);
+                document.getElementById('contenedor-pagos').innerHTML = `<p class="text-center text-slate-400 text-[10px] font-black uppercase py-10">No se pudieron cargar los pagos</p>`;
+                return;
+            }
+
+            todosLosPagos = respPagos.data || [];
+            listaSocios = respSocios.data || [];
+            actualizarDashboard(todosLosPagos);
+            renderizarListaAgrupada(todosLosPagos);
+        } catch (err) {
+            console.error(err);
+            mostrarToast('Error inesperado: ' + err.message, 'error', 6000);
+        }
+    }
+
+    function mostrarSkeleton() {
+        document.getElementById('contenedor-pagos').innerHTML = `
+            <div class="skeleton-block h-20"></div>
+            <div class="skeleton-block h-20"></div>
+            <div class="skeleton-block h-20"></div>`;
     }
 
     function obtenerNombreSocio(numSocio) {
         const socio = listaSocios.find(s => s.num_socio === numSocio);
-        return socio ? `${socio.nombre} ${socio.apellidos || ''}` : "Socio Desconocido";
+        return socio ? `${socio.nombre} ${socio.apellidos || ''}`.trim() : "Socio Desconocido";
     }
 
     function actualizarDashboard(datos) {
         const total = datos.reduce((acc, p) => acc + (Number(p.importe) || 0), 0);
-        document.getElementById('total-ingresos').innerText = total.toLocaleString() + "€";
+        document.getElementById('total-ingresos').innerText = total.toFixed(2) + "€";
 
         const ingresosPorMes = {};
         datos.forEach(p => {
             if (!p.periodo) return;
             const mes = p.periodo.trim();
-            ingresosPorMes[mes] = (ingresosPorMes[mes] || 0) + Number(p.importe);
+            ingresosPorMes[mes] = (ingresosPorMes[mes] || 0) + Number(p.importe || 0);
         });
 
-        const etiquetas = Object.keys(ingresosPorMes).sort((a, b) => getValCron(a) - getValCron(b));
+        // Solo se grafican los periodos con formato cronológico reconocible, ordenados correctamente.
+        const etiquetas = Object.keys(ingresosPorMes)
+            .filter(mes => getValCron(mes) !== null)
+            .sort((a, b) => getValCron(a) - getValCron(b));
         const valores = etiquetas.map(e => ingresosPorMes[e]);
 
         if (miGrafico) miGrafico.destroy();
@@ -157,10 +270,17 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { 
-                    y: { beginAtZero: true, ticks: { font: { size: 9 } } }, 
-                    x: { ticks: { font: { size: 9, weight: 'bold' } }, grid: { display: false } } 
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) { return `${Number(context.parsed.y).toFixed(2)}€`; }
+                        }
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true, ticks: { font: { size: 9 } } },
+                    x: { ticks: { font: { size: 9, weight: 'bold' } }, grid: { display: false } }
                 }
             }
         });
@@ -168,6 +288,12 @@
 
     function renderizarListaAgrupada(datos) {
         const contenedor = document.getElementById('contenedor-pagos');
+
+        if (datos.length === 0) {
+            contenedor.innerHTML = `<p class="text-center text-slate-400 text-[10px] font-black uppercase py-10">No se encontraron pagos con ese filtro</p>`;
+            return;
+        }
+
         const grupos = {};
         datos.forEach(p => {
             const mes = p.periodo ? p.periodo.trim() : "Sin periodo";
@@ -175,11 +301,17 @@
             grupos[mes].push(p);
         });
 
-        const mesesOrdenados = Object.keys(grupos).sort((a, b) => getValCron(b) - getValCron(a));
+        // Los periodos con formato reconocible se ordenan cronológicamente (más reciente primero).
+        // Los que no tienen un formato válido (incluyendo "Sin periodo") se agrupan al final,
+        // en vez de quedar en una posición indefinida por culpa de NaN en el sort.
+        const mesesConFecha = Object.keys(grupos).filter(m => getValCron(m) !== null)
+            .sort((a, b) => getValCron(b) - getValCron(a));
+        const mesesSinFecha = Object.keys(grupos).filter(m => getValCron(m) === null).sort();
+        const mesesOrdenados = [...mesesConFecha, ...mesesSinFecha];
 
         contenedor.innerHTML = mesesOrdenados.map((mes, index) => {
-            const totalMes = grupos[mes].reduce((acc, p) => acc + Number(p.importe), 0);
-            const safeId = mes.replace(/\s+/g, '-').toLowerCase();
+            const totalMes = grupos[mes].reduce((acc, p) => acc + Number(p.importe || 0), 0);
+            const safeId = generarSafeId(mes, index);
             const isFirst = index === 0;
 
             return `
@@ -187,7 +319,7 @@
                     <div onclick="toggleMes('${safeId}')" class="mes-header px-5 sm:px-8 py-5 flex justify-between items-center bg-slate-50/50">
                         <div class="flex items-center gap-3">
                             <span id="flecha-${safeId}" class="text-slate-400 text-[10px]">${isFirst ? '▼' : '▶'}</span>
-                            <h3 class="font-black uppercase text-[11px] sm:text-xs tracking-widest text-slate-800">${mes}</h3>
+                            <h3 class="font-black uppercase text-[11px] sm:text-xs tracking-widest text-slate-800">${escapeHtml(mes)}</h3>
                             <span class="bg-slate-900 text-white text-[8px] px-2 py-0.5 rounded-full font-bold">${grupos[mes].length}</span>
                         </div>
                         <span class="font-black text-slate-900 text-sm">${totalMes.toFixed(2)}€</span>
@@ -199,8 +331,8 @@
                                     <tr class="hover:bg-slate-50/50">
                                         <td class="px-5 sm:px-8 py-4">
                                             <div class="flex flex-col">
-                                                <span class="font-bold text-slate-800 text-xs sm:text-sm">${obtenerNombreSocio(p.num_socio)}</span>
-                                                <span class="text-[9px] text-slate-400 uppercase">Nº ${p.num_socio || '--'}</span>
+                                                <span class="font-bold text-slate-800 text-xs sm:text-sm">${escapeHtml(obtenerNombreSocio(p.num_socio))}</span>
+                                                <span class="text-[9px] text-slate-400 uppercase">Nº ${escapeHtml(p.num_socio ?? '--')}</span>
                                             </div>
                                         </td>
                                         <td class="px-5 sm:px-8 py-4 text-right font-black text-emerald-600 text-xs sm:text-sm">${Number(p.importe || 0).toFixed(2)}€</td>
@@ -227,13 +359,48 @@
 
     document.getElementById('buscador-pagos').addEventListener('input', (e) => {
         const term = e.target.value.toLowerCase();
-        const filtrados = todosLosPagos.filter(p => {
-            const nombreSocio = obtenerNombreSocio(p.num_socio).toLowerCase();
-            const periodo = (p.periodo || "").toLowerCase();
-            return nombreSocio.includes(term) || periodo.includes(term);
-        });
-        renderizarListaAgrupada(filtrados);
+
+        clearTimeout(debounceBuscadorPagos);
+        debounceBuscadorPagos = setTimeout(() => {
+            const filtrados = todosLosPagos.filter(p => {
+                const nombreSocio = obtenerNombreSocio(p.num_socio).toLowerCase();
+                const periodo = (p.periodo || "").toLowerCase();
+                return nombreSocio.includes(term) || periodo.includes(term);
+            });
+            renderizarListaAgrupada(filtrados);
+        }, 250);
     });
+
+    // --- EXPORTAR HISTÓRICO DE PAGOS A EXCEL ---
+    function exportarPagosExcel() {
+        if (!todosLosPagos || todosLosPagos.length === 0) {
+            mostrarToast("No hay pagos registrados para exportar.", 'info');
+            return;
+        }
+
+        const datosParaExcel = todosLosPagos
+            .slice()
+            .sort((a, b) => (getValCron(a.periodo) || 0) - (getValCron(b.periodo) || 0))
+            .map(p => ({
+                "Nº SOCIO": p.num_socio ?? '---',
+                "SOCIO": obtenerNombreSocio(p.num_socio),
+                "PERIODO": p.periodo || 'Sin periodo',
+                "IMPORTE (€)": Number(p.importe) || 0,
+                "FECHA DE PAGO": p.fecha_pago ? new Date(p.fecha_pago).toLocaleDateString('es-ES') : '---'
+            }));
+
+        const hoja = XLSX.utils.json_to_sheet(datosParaExcel);
+        const libro = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(libro, hoja, "Pagos");
+
+        hoja['!cols'] = [
+            {wch: 10}, {wch: 28}, {wch: 18}, {wch: 14}, {wch: 16}
+        ];
+
+        const fecha = new Date().toISOString().slice(0, 10);
+        XLSX.writeFile(libro, `Historico_Pagos_ValoresEnJuego_${fecha}.xlsx`);
+        mostrarToast('Excel de pagos exportado.', 'success');
+    }
 
     async function validarAcceso() {
         const { data: { session } } = await supabaseClient.auth.getSession();
