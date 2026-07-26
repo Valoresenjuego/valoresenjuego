@@ -141,11 +141,19 @@
 
             <div class="space-y-1">
                 <label class="text-[9px] font-black uppercase text-slate-400 ml-2">Destinatarios</label>
-                <select id="difusion-destinatarios" class="w-full p-5 bg-slate-50 rounded-2xl font-bold text-center border-none outline-none appearance-none">
+                <select id="difusion-destinatarios" onchange="actualizarPreviaDifusion()" class="w-full p-5 bg-slate-50 rounded-2xl font-bold text-center border-none outline-none appearance-none">
                     <option value="prueba">🧪 Modo prueba (solo a mí)</option>
                     <option value="pendientes">🔴 Solo socios con pago pendiente</option>
                     <option value="todos">📣 Todos los socios activos</option>
                 </select>
+            </div>
+
+            <div class="space-y-1">
+                <div class="flex justify-between items-center ml-2 mr-1">
+                    <label class="text-[9px] font-black uppercase text-slate-400">Se enviará a</label>
+                    <span id="difusion-previa-contador" class="text-[9px] font-black uppercase text-slate-400">0</span>
+                </div>
+                <div id="difusion-previa-lista" class="max-h-40 overflow-y-auto custom-scrollbar bg-slate-50 rounded-2xl p-3 space-y-1"></div>
             </div>
 
             <button onclick="ejecutarEnvioMasivo()" id="btn-lanzar-difusion" class="w-full py-5 bg-rose-500 text-white font-black rounded-[1.5rem] uppercase text-xs tracking-widest shadow-lg shadow-rose-200">
@@ -491,7 +499,48 @@
         document.getElementById('difusion-destinatarios').value = 'prueba';
         document.getElementById('difusion-dia-limite').value = 6;
 
+        actualizarPreviaDifusion();
         mostrarModal('modalDifusion');
+    }
+
+    // --- Calcula la lista de socios {nombre, email} según el modo elegido ---
+    // Función compartida entre la previsualización y el envío real, para que
+    // ambas usen siempre exactamente el mismo criterio de filtrado.
+    function calcularDestinatariosDifusion(modo) {
+        if (modo === 'prueba') {
+            return [{ nombre: "Roberto", email: "albertoherreria@gmail.com" }];
+        } else if (modo === 'pendientes') {
+            return listaSocios.filter(s => {
+                if (s.estado !== 'ACTIVO' || !s.email) return false;
+                return !obtenerEstatusPago(s.num_socio).ok;
+            }).map(s => ({ nombre: s.nombre, email: s.email }));
+        } else if (modo === 'todos') {
+            return listaSocios.filter(s => s.estado === 'ACTIVO' && s.email)
+                .map(s => ({ nombre: s.nombre, email: s.email }));
+        }
+        return [];
+    }
+
+    // --- Refresca la lista visible de "a quién se le va a enviar" dentro del modal ---
+    function actualizarPreviaDifusion() {
+        const modo = document.getElementById('difusion-destinatarios').value;
+        const destinatarios = calcularDestinatariosDifusion(modo);
+
+        const contador = document.getElementById('difusion-previa-contador');
+        const lista = document.getElementById('difusion-previa-lista');
+
+        contador.innerText = destinatarios.length + (destinatarios.length === 1 ? ' socio' : ' socios');
+
+        if (destinatarios.length === 0) {
+            lista.innerHTML = '<p class="text-center text-slate-400 text-[9px] font-bold uppercase py-3">Sin destinatarios para este filtro</p>';
+            return;
+        }
+
+        lista.innerHTML = destinatarios.map(d => `
+            <div class="flex justify-between items-center bg-white rounded-xl px-3 py-2 border border-slate-100">
+                <span class="font-bold text-[10px] text-slate-700 truncate mr-2">${escapeHtml(d.nombre)}</span>
+                <span class="text-[9px] text-slate-400 font-bold truncate">${escapeHtml(d.email)}</span>
+            </div>`).join('');
     }
 
     // --- ENVÍO MASIVO DE AVISOS (ahora con selección real de destinatarios) ---
@@ -507,19 +556,7 @@
             return;
         }
 
-        let sociosADifundir = [];
-
-        if (modoDestinatarios === 'prueba') {
-            sociosADifundir = [{ nombre: "Roberto", email: "albertoherreria@gmail.com" }];
-        } else if (modoDestinatarios === 'pendientes') {
-            sociosADifundir = listaSocios.filter(s => {
-                if (s.estado !== 'ACTIVO' || !s.email) return false;
-                return !obtenerEstatusPago(s.num_socio).ok;
-            }).map(s => ({ nombre: s.nombre, email: s.email }));
-        } else if (modoDestinatarios === 'todos') {
-            sociosADifundir = listaSocios.filter(s => s.estado === 'ACTIVO' && s.email)
-                .map(s => ({ nombre: s.nombre, email: s.email }));
-        }
+        const sociosADifundir = calcularDestinatariosDifusion(modoDestinatarios);
 
         if (sociosADifundir.length === 0) {
             mostrarToast('No hay destinatarios para ese filtro (revisa que tengan email registrado).', 'error');
