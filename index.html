@@ -131,7 +131,7 @@
         <div class="space-y-4">
             <div class="space-y-1">
                 <label class="text-[9px] font-black uppercase text-slate-400 ml-2">Selecciona el periodo</label>
-                <select id="difusion-periodo" class="w-full p-5 bg-slate-50 rounded-2xl font-bold text-center border-none outline-none appearance-none"></select>
+                <select id="difusion-periodo" onchange="actualizarPreviaDifusion()" class="w-full p-5 bg-slate-50 rounded-2xl font-bold text-center border-none outline-none appearance-none"></select>
             </div>
 
             <div class="space-y-1">
@@ -503,16 +503,24 @@
         mostrarModal('modalDifusion');
     }
 
+    // --- Comprueba si un socio ya pagó un periodo concreto (texto, ej. "AGOSTO 2026") ---
+    function socioPagoPeriodo(numSocio, periodoTexto) {
+        return listaPagos.some(p => p.periodo.toLowerCase().trim() === periodoTexto.toLowerCase().trim() && p.num_socio === numSocio);
+    }
+
     // --- Calcula la lista de socios {nombre, email} según el modo elegido ---
     // Función compartida entre la previsualización y el envío real, para que
     // ambas usen siempre exactamente el mismo criterio de filtrado.
-    function calcularDestinatariosDifusion(modo) {
+    // periodoTexto es el periodo elegido en el desplegable del modal (ej. "AGOSTO 2026"):
+    // se usa para "pendientes", ya que lo que interesa es quién no ha pagado ESE mes
+    // concreto, no el mes real del calendario (útil para revisar meses pasados o futuros).
+    function calcularDestinatariosDifusion(modo, periodoTexto) {
         if (modo === 'prueba') {
             return [{ nombre: "Roberto", email: "albertoherreria@gmail.com" }];
         } else if (modo === 'pendientes') {
             return listaSocios.filter(s => {
                 if (s.estado !== 'ACTIVO' || !s.email) return false;
-                return !obtenerEstatusPago(s.num_socio).ok;
+                return !socioPagoPeriodo(s.num_socio, periodoTexto);
             }).map(s => ({ nombre: s.nombre, email: s.email }));
         } else if (modo === 'todos') {
             return listaSocios.filter(s => s.estado === 'ACTIVO' && s.email)
@@ -524,7 +532,8 @@
     // --- Refresca la lista visible de "a quién se le va a enviar" dentro del modal ---
     function actualizarPreviaDifusion() {
         const modo = document.getElementById('difusion-destinatarios').value;
-        const destinatarios = calcularDestinatariosDifusion(modo);
+        const periodoTexto = document.getElementById('difusion-periodo').value;
+        const destinatarios = calcularDestinatariosDifusion(modo, periodoTexto);
 
         const contador = document.getElementById('difusion-previa-contador');
         const lista = document.getElementById('difusion-previa-lista');
@@ -556,7 +565,7 @@
             return;
         }
 
-        const sociosADifundir = calcularDestinatariosDifusion(modoDestinatarios);
+        const sociosADifundir = calcularDestinatariosDifusion(modoDestinatarios, periodoSeleccionado);
 
         if (sociosADifundir.length === 0) {
             mostrarToast('No hay destinatarios para ese filtro (revisa que tengan email registrado).', 'error');
