@@ -351,6 +351,22 @@ function prepararEdicion(id) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+async function eliminarPago(id) {
+    if (!confirm("¿Seguro que quieres eliminar este registro?")) return;
+
+    try {
+        const res = await _supabase.from('pagos_bar').delete().eq('id', id);
+        if (!res.error) {
+            await cargarDatos();
+        } else {
+            alert("Error al eliminar: " + res.error.message);
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Error crítico en la conexión.");
+    }
+}
+
 function cancelarEdicion() {
     editandoID = null;
     document.getElementById('formBar').reset();
