@@ -784,24 +784,194 @@
 
     document.getElementById('formLogin').addEventListener('submit', async (e) => {
         e.preventDefault();
+
         const btn = document.getElementById('btn-entrar');
         btn.innerText = "ACCEDIENDO...";
         btn.disabled = true;
+
         const { error } = await supabaseClient.auth.signInWithPassword({
-            email: document.getElementById('email').value,
+            email: document.getElementById('email').value.trim(),
             password: document.getElementById('password').value
         });
+
         if (error) {
             mostrarToast("Error: " + error.message, 'error');
-            btn.innerText = "Entrar al Panel";
+            btn.innerText = "Entrar ahora";
             btn.disabled = false;
+            return;
         }
-        else { document.getElementById('seccion-login').classList.add('hidden'); inicializarApp(); }
+
+        console.log('AUTH: login correcto, comprobando rol...');
+
+        const esAdmin = await comprobarRolYRedirigir();
+
+        if (esAdmin) {
+            document.getElementById('seccion-login').classList.add('hidden');
+            inicializarApp();
+        }
+
+        btn.innerText = "Entrar ahora";
+        btn.disabled = false;
     });
 
+
+    // ============================================================
+    // CONTROL DE ACCESO POR ROL
+    // ============================================================
+    // admin -> permanece en index.html
+    // socio -> se dirige a socio.html
+    //
+    // La vinculación se hace mediante:
+    // auth.users.id -> usuarios_socios.id
+    // usuarios_socios.num_socio -> socios.num_socio
+    //
+    async function comprobarRolYRedirigir() {
+
+        console.log('AUTH: comprobando usuario y rol...');
+
+        const {
+            data: { session },
+            error: sessionError
+        } = await supabaseClient.auth.getSession();
+
+        if (sessionError) {
+            console.error('AUTH: error obteniendo sesión:', sessionError);
+            mostrarToast(
+                'No se ha podido comprobar la sesión: ' + sessionError.message,
+                'error',
+                6000
+            );
+            return false;
+        }
+
+        if (!session) {
+            console.log('AUTH: no hay sesión');
+            return false;
+        }
+
+        console.log('AUTH: usuario:', session.user.email);
+        console.log('AUTH: UID:', session.user.id);
+
+        const {
+            data,
+            error: rolError
+        } = await supabaseClient
+            .from('usuarios_socios')
+            .select('rol, activo, num_socio')
+            .eq('id', session.user.id)
+            .single();
+
+        if (rolError) {
+            console.error(
+                'AUTH: error consultando usuarios_socios:',
+                rolError
+            );
+
+            mostrarToast(
+                'No se ha podido comprobar el tipo de usuario: ' +
+                rolError.message,
+                'error',
+                6000
+            );
+
+            return false;
+        }
+
+        if (!data) {
+            console.error('AUTH: el usuario no tiene vinculación');
+
+            await supabaseClient.auth.signOut();
+
+            mostrarToast(
+                'Tu usuario no está vinculado a la asociación.',
+                'error'
+            );
+
+            return false;
+        }
+
+        console.log('AUTH: vinculación encontrada:', data);
+
+        if (!data.activo) {
+            await supabaseClient.auth.signOut();
+
+            mostrarToast(
+                'Tu usuario está desactivado.',
+                'error'
+            );
+
+            return false;
+        }
+
+        // SOCIO
+        if (data.rol === 'socio') {
+
+            console.log(
+                'AUTH: usuario socio nº',
+                data.num_socio
+            );
+
+            // URL relativa compatible con GitHub Pages y
+            // con el repositorio /valoresenjuego/.
+            window.location.replace(
+                new URL('socio.html', window.location.href).href
+            );
+
+            return false;
+        }
+
+        // ADMIN
+        if (data.rol === 'admin') {
+
+            console.log(
+                'AUTH: usuario administrador'
+            );
+
+            return true;
+        }
+
+        // Rol desconocido
+        console.error(
+            'AUTH: rol desconocido:',
+            data.rol
+        );
+
+        await supabaseClient.auth.signOut();
+
+        mostrarToast(
+            'El usuario tiene un rol no válido.',
+            'error'
+        );
+
+        return false;
+    }
+
+
+    // ============================================================
+    // COMPROBAR SESIÓN AL ABRIR INDEX.HTML
+    // ============================================================
     async function verificarSesionActual() {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (session) { document.getElementById('seccion-login').classList.add('hidden'); inicializarApp(); }
+
+        console.log(
+            'AUTH: verificando sesión al cargar...'
+        );
+
+        const esAdmin =
+            await comprobarRolYRedirigir();
+
+        if (!esAdmin) {
+            return;
+        }
+
+        console.log(
+            'AUTH: sesión válida de administrador'
+        );
+
+        document
+            .getElementById('seccion-login')
+            .classList.add('hidden');
+
+        inicializarApp();
     }
 
     function obtenerEstatusPago(numSocio) {
