@@ -799,11 +799,40 @@
         else { document.getElementById('seccion-login').classList.add('hidden'); inicializarApp(); }
     });
 
-    async function verificarSesionActual() {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (session) { document.getElementById('seccion-login').classList.add('hidden'); inicializarApp(); }
+    async function comprobarRolYRedirigir() {
+    const { data: { session }, error } = await supabaseClient.auth.getSession();
+
+    if (error || !session) {
+        return false;
     }
 
+    const { data, error: rolError } = await supabaseClient
+        .from('usuarios_socios')
+        .select('rol, activo, num_socio')
+        .eq('id', session.user.id)
+        .single();
+
+    if (rolError || !data || !data.activo) {
+        await supabaseClient.auth.signOut();
+        mostrarToast('Usuario no autorizado.', 'error');
+        return false;
+    }
+
+    if (data.rol === 'socio') {
+        window.location.href = 'socio.html';
+        return false;
+    }
+
+    if (data.rol !== 'admin') {
+        await supabaseClient.auth.signOut();
+        mostrarToast('Rol de usuario no válido.', 'error');
+        return false;
+    }
+
+    return true;
+}
+
+    
     function obtenerEstatusPago(numSocio) {
         const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
         const hoy = new Date();
@@ -811,7 +840,14 @@
         const pagado = listaPagos.some(p => p.periodo.toLowerCase().trim() === pActual && p.num_socio === numSocio);
         return pagado ? { ok: true, color: 'bg-emerald-600', texto: 'PAGADO' } : { ok: false, color: 'bg-rose-600', texto: 'PENDIENTE' };
     }
+async function verificarSesionActual() {
+    const esAdmin = await comprobarRolYRedirigir();
 
+    if (esAdmin) {
+        document.getElementById('seccion-login').classList.add('hidden');
+        inicializarApp();
+    }
+}
     // --- Calcula cuántos meses consecutivos lleva sin pagar un socio (mejora de morosidad) ---
     function calcularMesesImpagados(numSocio) {
         const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
