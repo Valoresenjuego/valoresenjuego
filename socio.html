@@ -3,19 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Área - Valores en Juego</title>
+
+    <title>Mi Área - Valores En Juego</title>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        body {
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+                         "Segoe UI", sans-serif;
+        }
+
+        .loading-spinner {
+            width: 28px;
+            height: 28px;
+            border: 3px solid #e2e8f0;
+            border-top-color: #0f172a;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
 </head>
 
 <body class="bg-slate-50 text-slate-900 min-h-screen">
 
-    <header class="bg-white border-b border-slate-100">
-        <div class="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
+    <!-- CABECERA -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+
+        <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
 
             <div class="flex items-center gap-3">
-                <div class="w-9 h-9 bg-slate-900 rounded-xl flex items-center justify-center">
+
+                <div class="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center">
                     <span class="text-white font-black text-xl">V</span>
                 </div>
 
@@ -23,92 +50,210 @@
                     <h1 class="text-sm font-black uppercase tracking-tight">
                         Valores<span class="text-slate-400">EnJuego</span>
                     </h1>
-                    <p class="text-[8px] text-slate-400 font-bold uppercase tracking-widest">
+
+                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
                         Área del socio
                     </p>
                 </div>
+
             </div>
 
             <button
+                id="btn-salir"
                 onclick="cerrarSesion()"
-                class="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-[9px] font-black uppercase tracking-widest">
+                class="px-4 py-2 bg-slate-100 hover:bg-slate-200
+                       rounded-xl text-[9px] font-black uppercase
+                       tracking-widest transition">
+
                 Salir
+
             </button>
 
         </div>
+
     </header>
 
 
-    <main class="max-w-3xl mx-auto p-4 md:p-8">
+    <!-- CONTENIDO -->
+    <main class="max-w-4xl mx-auto p-4 md:p-8">
 
-        <div id="cargando" class="bg-white rounded-[2rem] p-8 text-center shadow-sm">
-            <p class="text-xs font-black uppercase text-slate-400">
-                Cargando tu área...
+        <!-- CARGANDO -->
+        <div id="pantalla-cargando"
+             class="bg-white rounded-[2rem] p-10 shadow-sm border border-slate-100 text-center">
+
+            <div class="loading-spinner"></div>
+
+            <p class="mt-5 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                Comprobando acceso...
             </p>
+
         </div>
 
 
-        <div id="contenido" class="hidden space-y-6">
+        <!-- ERROR -->
+        <div id="pantalla-error"
+             class="hidden bg-white rounded-[2rem] p-8 shadow-sm border border-rose-100">
+
+            <div class="text-center">
+
+                <div class="text-4xl mb-4">
+                    ⚠️
+                </div>
+
+                <h2 class="text-lg font-black text-rose-600">
+                    No se ha podido cargar tu área
+                </h2>
+
+                <p id="mensaje-error"
+                   class="text-xs text-slate-500 mt-3">
+                </p>
+
+                <button
+                    onclick="location.reload()"
+                    class="mt-6 px-5 py-3 bg-slate-900 text-white
+                           rounded-xl text-[9px] font-black uppercase
+                           tracking-widest">
+
+                    Reintentar
+
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- ÁREA SOCIO -->
+        <div id="contenido-socio"
+             class="hidden space-y-6">
+
 
             <!-- BIENVENIDA -->
-            <section class="bg-slate-900 rounded-[2rem] p-7 text-white shadow-xl">
+            <section class="bg-slate-900 rounded-[2rem] p-7 md:p-9 text-white shadow-xl">
 
-                <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                    Bienvenido
+                <p class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
+                    Mi área
                 </p>
 
                 <h2 id="nombre-socio"
-                    class="text-3xl font-black tracking-tight mt-2">
+                    class="text-3xl md:text-4xl font-black tracking-tight mt-2">
+                    —
                 </h2>
 
-                <p class="text-slate-400 text-xs font-bold uppercase mt-2">
-                    Socio nº <span id="numero-socio"></span>
-                </p>
+                <div class="flex items-center gap-2 mt-3">
+
+                    <span class="text-slate-400 text-xs font-bold uppercase">
+                        Socio nº
+                    </span>
+
+                    <span id="numero-socio"
+                          class="text-white text-xs font-black">
+                        —
+                    </span>
+
+                </div>
 
             </section>
 
 
             <!-- CUENTA DEL MES -->
-            <section class="bg-white rounded-[2rem] p-7 border border-slate-100 shadow-sm">
+            <section class="bg-white rounded-[2rem] p-6 md:p-8
+                            border border-slate-100 shadow-sm">
 
-                <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                    Cuenta del mes
-                </p>
+                <div class="flex items-center justify-between">
 
-                <div class="mt-5 grid grid-cols-2 gap-3">
+                    <div>
 
-                    <div class="bg-slate-50 rounded-2xl p-5">
-                        <p class="text-[8px] font-black uppercase text-slate-400">
-                            Cuota
+                        <p class="text-[9px] font-black uppercase
+                                  tracking-widest text-slate-400">
+
+                            Cuenta del mes
+
                         </p>
 
-                        <p class="text-2xl font-black mt-1">
-                            20,00 €
+                        <p id="periodo-actual"
+                           class="text-xs font-bold text-slate-500 mt-1">
+                            —
                         </p>
+
                     </div>
 
-                    <div class="bg-emerald-50 rounded-2xl p-5">
-                        <p class="text-[8px] font-black uppercase text-emerald-600">
-                            Bar
-                        </p>
-
-                        <p id="total-bar"
-                           class="text-2xl font-black text-emerald-600 mt-1">
-                            0,00 €
-                        </p>
+                    <div class="text-2xl">
+                        💶
                     </div>
 
                 </div>
 
-                <div class="mt-4 bg-slate-900 rounded-2xl p-5 text-white flex justify-between items-center">
 
-                    <span class="text-[9px] font-black uppercase tracking-widest">
-                        Total del mes
-                    </span>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+
+
+                    <!-- CUOTA -->
+                    <div class="bg-slate-50 rounded-2xl p-5">
+
+                        <p class="text-[8px] font-black uppercase
+                                  tracking-widest text-slate-400">
+
+                            Cuota mensual
+
+                        </p>
+
+                        <p id="importe-cuota"
+                           class="text-2xl font-black mt-2">
+
+                            20,00 €
+
+                        </p>
+
+                    </div>
+
+
+                    <!-- BAR -->
+                    <div class="bg-emerald-50 rounded-2xl p-5">
+
+                        <p class="text-[8px] font-black uppercase
+                                  tracking-widest text-emerald-600">
+
+                            Consumos del bar
+
+                        </p>
+
+                        <p id="total-bar"
+                           class="text-2xl font-black text-emerald-600 mt-2">
+
+                            0,00 €
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <!-- TOTAL -->
+                <div class="mt-4 bg-slate-900 rounded-2xl p-5
+                            text-white flex items-center justify-between">
+
+                    <div>
+
+                        <p class="text-[8px] font-black uppercase
+                                  tracking-widest text-slate-400">
+
+                            Total a pagar
+
+                        </p>
+
+                        <p class="text-xs font-bold text-slate-400 mt-1">
+                            Cuota + consumos
+                        </p>
+
+                    </div>
 
                     <span id="total-mes"
-                          class="text-2xl font-black">
+                          class="text-2xl md:text-3xl font-black">
+
                         20,00 €
+
                     </span>
 
                 </div>
@@ -116,24 +261,95 @@
             </section>
 
 
-            <!-- PRÓXIMAMENTE -->
-            <section class="bg-white rounded-[2rem] p-7 border border-slate-100 shadow-sm">
+            <!-- CONSUMOS -->
+            <section class="bg-white rounded-[2rem] p-6 md:p-8
+                            border border-slate-100 shadow-sm">
 
-                <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                    Consumos
+                <div class="flex items-center justify-between">
+
+                    <div>
+
+                        <p class="text-[9px] font-black uppercase
+                                  tracking-widest text-slate-400">
+
+                            Mis consumos
+
+                        </p>
+
+                        <p class="text-xs font-bold text-slate-500 mt-1">
+                            Este mes
+                        </p>
+
+                    </div>
+
+                    <div class="text-2xl">
+                        🍺
+                    </div>
+
+                </div>
+
+
+                <div id="lista-consumos"
+                     class="mt-5">
+
+                    <div class="bg-slate-50 rounded-2xl p-6 text-center">
+
+                        <p class="text-sm font-black text-slate-700">
+                            Todavía no hay consumos
+                        </p>
+
+                        <p class="text-xs text-slate-400 font-bold mt-1">
+                            Cuando registremos el sistema del bar,
+                            aparecerán aquí.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <!-- INFORMACIÓN -->
+            <section class="bg-white rounded-[2rem] p-6 md:p-8
+                            border border-slate-100 shadow-sm">
+
+                <p class="text-[9px] font-black uppercase
+                          tracking-widest text-slate-400">
+
+                    Mi información
+
                 </p>
 
-                <div class="mt-5 bg-slate-50 rounded-2xl p-6 text-center">
 
-                    <div class="text-3xl mb-3">🍺</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
 
-                    <p class="font-black text-sm">
-                        Registro de consumos
-                    </p>
+                    <div class="bg-slate-50 rounded-2xl p-4">
 
-                    <p class="text-xs text-slate-400 font-bold mt-1">
-                        Próximamente podrás apuntar aquí tus consumiciones del bar.
-                    </p>
+                        <p class="text-[8px] font-black uppercase text-slate-400">
+                            Email
+                        </p>
+
+                        <p id="email-socio"
+                           class="text-sm font-bold mt-1 break-all">
+                            —
+                        </p>
+
+                    </div>
+
+
+                    <div class="bg-slate-50 rounded-2xl p-4">
+
+                        <p class="text-[8px] font-black uppercase text-slate-400">
+                            Estado
+                        </p>
+
+                        <p id="estado-socio"
+                           class="text-sm font-black mt-1">
+                            —
+                        </p>
+
+                    </div>
 
                 </div>
 
@@ -146,14 +362,89 @@
 
 <script>
 
+    /* =========================================================
+       CONFIGURACIÓN SUPABASE
+       ========================================================= */
+
     const SB_URL = "https://xegikxovbjttailnassr.supabase.co";
 
-    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzc3ODAwNTkzLCJleHAiOjIwOTMzNzY1OTN9.tufFxLYUJ8wdDsFtWW4wL7Z1w3TMeUw3CRbNkHSp58w";
+    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhlZ2lreG92Ymp0YWlsbG5hc3NyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4MDA1OTMsImV4cCI6MjA5MzM3NjU5M30.tufFxLYUJ8wdDsFtWW4wL7Z1w3TMeUw3CRbNkHSp58w";
 
-    const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+    const supabaseClient = supabase.createClient(
+        SB_URL,
+        SB_KEY
+    );
 
+
+    /* =========================================================
+       ELEMENTOS
+       ========================================================= */
+
+    const pantallaCargando =
+        document.getElementById('pantalla-cargando');
+
+    const pantallaError =
+        document.getElementById('pantalla-error');
+
+    const contenidoSocio =
+        document.getElementById('contenido-socio');
+
+    const mensajeError =
+        document.getElementById('mensaje-error');
+
+
+    /* =========================================================
+       UTILIDADES
+       ========================================================= */
+
+    function mostrarError(mensaje) {
+
+        console.error('SOCIO.HTML:', mensaje);
+
+        pantallaCargando.classList.add('hidden');
+
+        contenidoSocio.classList.add('hidden');
+
+        mensajeError.textContent = mensaje;
+
+        pantallaError.classList.remove('hidden');
+    }
+
+
+    function formatearEuros(valor) {
+
+        const numero = Number(valor) || 0;
+
+        return numero.toLocaleString('es-ES', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }) + ' €';
+    }
+
+
+    function obtenerPeriodoActual() {
+
+        const ahora = new Date();
+
+        return ahora.toLocaleDateString('es-ES', {
+            month: 'long',
+            year: 'numeric'
+        });
+    }
+
+
+    /* =========================================================
+       COMPROBAR ACCESO
+       ========================================================= */
 
     async function comprobarAcceso() {
+
+        console.log('SOCIO: comprobando sesión...');
+
+
+        /*
+         * 1. Comprobamos que existe una sesión.
+         */
 
         const {
             data: { session },
@@ -161,105 +452,399 @@
         } = await supabaseClient.auth.getSession();
 
 
-        if (sessionError || !session) {
-            window.location.href = 'index.html';
+        if (sessionError) {
+
+            mostrarError(
+                'No se ha podido comprobar la sesión: ' +
+                sessionError.message
+            );
+
             return;
         }
 
 
-        const { data, error } = await supabaseClient
+        /*
+         * Si no hay sesión, volvemos al login.
+         */
+
+        if (!session) {
+
+            console.log(
+                'SOCIO: no existe sesión. Volviendo al login.'
+            );
+
+            window.location.replace('index.html');
+
+            return;
+        }
+
+
+        console.log(
+            'SOCIO: sesión encontrada:',
+            session.user.email
+        );
+
+
+        /*
+         * 2. Buscamos la vinculación del usuario.
+         *
+         * La RLS de usuarios_socios permite que cada usuario
+         * consulte únicamente su propio registro.
+         */
+
+        const {
+            data,
+            error: rolError
+        } = await supabaseClient
             .from('usuarios_socios')
             .select('rol, activo, num_socio')
             .eq('id', session.user.id)
             .single();
 
 
-        if (error || !data || !data.activo) {
+        /*
+         * IMPORTANTE:
+         *
+         * NO hacemos signOut() si hay un error.
+         *
+         * Así evitamos el bucle que teníamos antes.
+         */
 
-            await supabaseClient.auth.signOut();
+        if (rolError) {
 
-            window.location.href = 'index.html';
+            console.error(
+                'SOCIO: error consultando usuarios_socios:',
+                rolError
+            );
+
+            mostrarError(
+                'Error al comprobar tu usuario: ' +
+                rolError.message
+            );
+
+            return;
+        }
+
+
+        if (!data) {
+
+            mostrarError(
+                'Tu cuenta no está vinculada a ningún socio.'
+            );
+
+            return;
+        }
+
+
+        console.log(
+            'SOCIO: vinculación encontrada:',
+            data
+        );
+
+
+        /*
+         * 3. Comprobamos que esté activo.
+         */
+
+        if (!data.activo) {
+
+            mostrarError(
+                'Tu acceso está desactivado. ' +
+                'Contacta con la asociación.'
+            );
 
             return;
         }
 
 
         /*
-         * Un administrador no debe utilizar socio.html.
-         * Si entra aquí, lo devolvemos al panel.
+         * 4. Un administrador no debe utilizar esta página.
          */
+
         if (data.rol === 'admin') {
 
-            window.location.href = 'index.html';
+            console.log(
+                'SOCIO: usuario admin. Volviendo al panel.'
+            );
+
+            window.location.replace('index.html');
 
             return;
         }
 
+
+        /*
+         * 5. Solo aceptamos rol socio.
+         */
 
         if (data.rol !== 'socio') {
 
-            await supabaseClient.auth.signOut();
-
-            window.location.href = 'index.html';
+            mostrarError(
+                'Tu cuenta no tiene un rol válido.'
+            );
 
             return;
         }
 
 
-        await cargarDatosSocio(data.num_socio);
+        /*
+         * 6. El socio debe tener número de socio.
+         */
+
+        if (data.num_socio === null ||
+            data.num_socio === undefined) {
+
+            mostrarError(
+                'Tu usuario no tiene asignado un número de socio.'
+            );
+
+            return;
+        }
+
+
+        /*
+         * 7. Cargamos sus datos.
+         */
+
+        await cargarDatosSocio(
+            data.num_socio,
+            session.user.email
+        );
     }
 
 
-    async function cargarDatosSocio(numSocio) {
+    /* =========================================================
+       CARGAR DATOS DEL SOCIO
+       ========================================================= */
 
-        const { data: socio, error } = await supabaseClient
+    async function cargarDatosSocio(
+        numSocio,
+        emailUsuario
+    ) {
+
+        console.log(
+            'SOCIO: cargando socio nº',
+            numSocio
+        );
+
+
+        const {
+            data: socio,
+            error
+        } = await supabaseClient
             .from('socios')
-            .select('nombre, apellidos, num_socio')
+            .select(`
+                num_socio,
+                nombre,
+                apellidos,
+                email,
+                estado,
+                cuota
+            `)
             .eq('num_socio', numSocio)
             .single();
 
 
-        if (error || !socio) {
+        if (error) {
 
-            document.getElementById('cargando').innerHTML =
-                '<p class="text-sm font-black text-rose-600">No se ha podido cargar tu ficha.</p>';
+            console.error(
+                'SOCIO: error cargando ficha:',
+                error
+            );
+
+            mostrarError(
+                'No se ha podido cargar tu ficha: ' +
+                error.message
+            );
 
             return;
         }
 
 
-        document.getElementById('nombre-socio').textContent =
-            `${socio.nombre} ${socio.apellidos}`;
+        if (!socio) {
 
-        document.getElementById('numero-socio').textContent =
+            mostrarError(
+                'No se ha encontrado la ficha del socio nº ' +
+                numSocio + '.'
+            );
+
+            return;
+        }
+
+
+        console.log(
+            'SOCIO: ficha cargada correctamente:',
+            socio
+        );
+
+
+        /* =====================================================
+           DATOS PERSONALES
+           ===================================================== */
+
+        document.getElementById(
+            'nombre-socio'
+        ).textContent =
+            `${socio.nombre || ''} ${socio.apellidos || ''}`.trim();
+
+
+        document.getElementById(
+            'numero-socio'
+        ).textContent =
             socio.num_socio;
 
 
+        document.getElementById(
+            'email-socio'
+        ).textContent =
+            socio.email || emailUsuario || '—';
+
+
+        document.getElementById(
+            'estado-socio'
+        ).textContent =
+            socio.estado || '—';
+
+
+        /* =====================================================
+           CUOTA
+           ===================================================== */
+
         /*
-         * De momento solamente mostramos la cuota.
-         * El total del bar lo conectaremos en el siguiente paso.
+         * Para este proyecto la cuota mensual es 20 €.
+         *
+         * Más adelante podemos utilizar directamente
+         * socios.cuota si quieres que pueda variar por socio.
          */
 
-        document.getElementById('total-bar').textContent = '0,00 €';
-
-        document.getElementById('total-mes').textContent = '20,00 €';
+        const cuota = 20;
 
 
-        document.getElementById('cargando').classList.add('hidden');
+        document.getElementById(
+            'importe-cuota'
+        ).textContent =
+            formatearEuros(cuota);
 
-        document.getElementById('contenido').classList.remove('hidden');
+
+        /* =====================================================
+           PERIODO
+           ===================================================== */
+
+        document.getElementById(
+            'periodo-actual'
+        ).textContent =
+            obtenerPeriodoActual();
+
+
+        /* =====================================================
+           CONSUMOS
+           ===================================================== */
+
+        /*
+         * TODAVÍA NO consultamos consumos_socios.
+         *
+         * Primero queremos comprobar que el acceso funciona.
+         *
+         * En el siguiente paso conectaremos aquí:
+         *
+         * consumos_socios
+         *      ↓
+         * num_socio
+         *      ↓
+         * productos_bar
+         *      ↓
+         * total mensual
+         */
+
+        const totalBar = 0;
+
+
+        document.getElementById(
+            'total-bar'
+        ).textContent =
+            formatearEuros(totalBar);
+
+
+        /* =====================================================
+           TOTAL
+           ===================================================== */
+
+        const totalMes = cuota + totalBar;
+
+
+        document.getElementById(
+            'total-mes'
+        ).textContent =
+            formatearEuros(totalMes);
+
+
+        /* =====================================================
+           MOSTRAR PÁGINA
+           ===================================================== */
+
+        pantallaCargando.classList.add('hidden');
+
+        pantallaError.classList.add('hidden');
+
+        contenidoSocio.classList.remove('hidden');
+
+
+        console.log(
+            'SOCIO: página cargada correctamente.'
+        );
     }
 
+
+    /* =========================================================
+       CERRAR SESIÓN
+       ========================================================= */
 
     async function cerrarSesion() {
 
-        await supabaseClient.auth.signOut();
+        const boton =
+            document.getElementById('btn-salir');
 
-        window.location.href = 'index.html';
+        boton.disabled = true;
+
+        boton.textContent = 'Saliendo...';
+
+
+        const { error } =
+            await supabaseClient.auth.signOut();
+
+
+        if (error) {
+
+            console.error(
+                'SOCIO: error cerrando sesión:',
+                error
+            );
+
+            boton.disabled = false;
+
+            boton.textContent = 'Salir';
+
+            mostrarError(
+                'No se ha podido cerrar la sesión: ' +
+                error.message
+            );
+
+            return;
+        }
+
+
+        window.location.replace('index.html');
     }
 
 
-    window.onload = comprobarAcceso;
+    /* =========================================================
+       INICIO
+       ========================================================= */
+
+    window.addEventListener(
+        'load',
+        comprobarAcceso
+    );
 
 </script>
 
