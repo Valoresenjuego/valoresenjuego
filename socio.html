@@ -2,428 +2,311 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mi Área - Valores En Juego</title>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
         body {
-            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-                         "Segoe UI", sans-serif;
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
         }
 
-        .loading-spinner {
-            width: 28px;
-            height: 28px;
-            border: 3px solid #e2e8f0;
-            border-top-color: #0f172a;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin: 0 auto;
+        .toast {
+            animation: toast-in .25s ease-out;
         }
 
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .qty-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            font-size: 20px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all .15s;
+        }
+
+        .qty-btn:active {
+            transform: scale(.94);
         }
     </style>
 </head>
 
-<body class="bg-slate-50 text-slate-900 min-h-screen">
+<body class="text-slate-900 min-h-screen">
 
-    <!-- CABECERA -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+<div id="toast-container"
+     class="fixed top-4 right-4 z-[200] flex flex-col gap-2 max-w-sm"></div>
 
-        <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+<header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+    <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
 
-            <div class="flex items-center gap-3">
-
-                <div class="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center">
-                    <span class="text-white font-black text-xl">V</span>
-                </div>
-
-                <div>
-                    <h1 class="text-sm font-black uppercase tracking-tight">
-                        Valores<span class="text-slate-400">EnJuego</span>
-                    </h1>
-
-                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
-                        Área del socio
-                    </p>
-                </div>
-
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center">
+                <span class="text-white font-black text-xl">V</span>
             </div>
 
-            <button
-                id="btn-salir"
-                onclick="cerrarSesion()"
-                class="px-4 py-2 bg-slate-100 hover:bg-slate-200
-                       rounded-xl text-[9px] font-black uppercase
-                       tracking-widest transition">
-
-                Salir
-
-            </button>
-
+            <div>
+                <h1 class="text-sm font-black uppercase tracking-tight">
+                    Valores<span class="text-slate-400">EnJuego</span>
+                </h1>
+                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
+                    Área del socio
+                </p>
+            </div>
         </div>
 
-    </header>
+        <button id="btn-salir"
+                onclick="cerrarSesion()"
+                class="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl
+                       text-[9px] font-black uppercase tracking-widest transition">
+            Salir
+        </button>
+    </div>
+</header>
 
+<main class="max-w-4xl mx-auto p-4 md:p-8">
 
-    <!-- CONTENIDO -->
-    <main class="max-w-4xl mx-auto p-4 md:p-8">
+    <section id="pantalla-cargando"
+             class="bg-white rounded-[2rem] p-10 text-center shadow-sm border border-slate-100">
+        <div class="w-7 h-7 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin mx-auto"></div>
+        <p class="mt-5 text-[10px] font-black uppercase tracking-widest text-slate-400">
+            Comprobando acceso...
+        </p>
+    </section>
 
-        <!-- CARGANDO -->
-        <div id="pantalla-cargando"
-             class="bg-white rounded-[2rem] p-10 shadow-sm border border-slate-100 text-center">
+    <section id="pantalla-error"
+             class="hidden bg-white rounded-[2rem] p-8 shadow-sm border border-rose-100 text-center">
+        <div class="text-4xl mb-4">⚠️</div>
+        <h2 class="text-lg font-black text-rose-600">
+            No se ha podido cargar tu área
+        </h2>
+        <p id="mensaje-error" class="text-xs text-slate-500 mt-3 break-words"></p>
+        <button onclick="location.reload()"
+                class="mt-6 px-5 py-3 bg-slate-900 text-white rounded-xl
+                       text-[9px] font-black uppercase tracking-widest">
+            Reintentar
+        </button>
+    </section>
 
-            <div class="loading-spinner"></div>
+    <div id="contenido-socio" class="hidden space-y-6">
 
-            <p class="mt-5 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                Comprobando acceso...
+        <!-- CABECERA SOCIO -->
+        <section class="bg-slate-900 rounded-[2rem] p-7 md:p-9 text-white shadow-xl">
+            <p class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
+                Mi área
             </p>
 
-        </div>
+            <h2 id="nombre-socio"
+                class="text-3xl md:text-4xl font-black tracking-tight mt-2">
+                —
+            </h2>
 
+            <div class="flex items-center gap-2 mt-3">
+                <span class="text-slate-400 text-xs font-bold uppercase">Socio nº</span>
+                <span id="numero-socio" class="text-white text-xs font-black">—</span>
+            </div>
+        </section>
 
-        <!-- ERROR -->
-        <div id="pantalla-error"
-             class="hidden bg-white rounded-[2rem] p-8 shadow-sm border border-rose-100">
+        <!-- CUENTA -->
+        <section class="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-sm">
 
-            <div class="text-center">
-
-                <div class="text-4xl mb-4">
-                    ⚠️
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                        Cuenta del mes
+                    </p>
+                    <p id="periodo-actual" class="text-xs font-bold text-slate-500 mt-1">—</p>
                 </div>
-
-                <h2 class="text-lg font-black text-rose-600">
-                    No se ha podido cargar tu área
-                </h2>
-
-                <p id="mensaje-error"
-                   class="text-xs text-slate-500 mt-3">
-                </p>
-
-                <button
-                    onclick="location.reload()"
-                    class="mt-6 px-5 py-3 bg-slate-900 text-white
-                           rounded-xl text-[9px] font-black uppercase
-                           tracking-widest">
-
-                    Reintentar
-
-                </button>
-
+                <div class="text-2xl">💶</div>
             </div>
 
-        </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
 
-
-        <!-- ÁREA SOCIO -->
-        <div id="contenido-socio"
-             class="hidden space-y-6">
-
-
-            <!-- BIENVENIDA -->
-            <section class="bg-slate-900 rounded-[2rem] p-7 md:p-9 text-white shadow-xl">
-
-                <p class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
-                    Mi área
-                </p>
-
-                <h2 id="nombre-socio"
-                    class="text-3xl md:text-4xl font-black tracking-tight mt-2">
-                    —
-                </h2>
-
-                <div class="flex items-center gap-2 mt-3">
-
-                    <span class="text-slate-400 text-xs font-bold uppercase">
-                        Socio nº
-                    </span>
-
-                    <span id="numero-socio"
-                          class="text-white text-xs font-black">
-                        —
-                    </span>
-
+                <div class="bg-slate-50 rounded-2xl p-5">
+                    <p class="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                        Cuota mensual
+                    </p>
+                    <p class="text-2xl font-black mt-2">20,00 €</p>
                 </div>
 
-            </section>
+                <div class="bg-emerald-50 rounded-2xl p-5">
+                    <p class="text-[8px] font-black uppercase tracking-widest text-emerald-600">
+                        Consumos del bar
+                    </p>
+                    <p id="total-bar" class="text-2xl font-black text-emerald-600 mt-2">
+                        0,00 €
+                    </p>
+                </div>
+            </div>
 
+            <div class="mt-4 bg-slate-900 rounded-2xl p-5 text-white flex items-center justify-between">
+                <div>
+                    <p class="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                        Total a pagar
+                    </p>
+                    <p class="text-xs font-bold text-slate-400 mt-1">
+                        Cuota + consumos
+                    </p>
+                </div>
+                <span id="total-mes" class="text-2xl md:text-3xl font-black">
+                    20,00 €
+                </span>
+            </div>
+        </section>
 
-            <!-- CUENTA DEL MES -->
-            <section class="bg-white rounded-[2rem] p-6 md:p-8
-                            border border-slate-100 shadow-sm">
+        <!-- REGISTRAR CONSUMO -->
+        <section class="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-sm">
+
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                        Registrar consumo
+                    </p>
+                    <p class="text-xs font-bold text-slate-500 mt-1">
+                        Selecciona las cantidades
+                    </p>
+                </div>
+                <div class="text-2xl">🍺</div>
+            </div>
+
+            <div id="lista-productos" class="mt-5 space-y-3">
+                <div class="bg-slate-50 rounded-2xl p-5 text-center text-xs font-bold text-slate-400">
+                    Cargando productos...
+                </div>
+            </div>
+
+            <div class="mt-5 border-t border-slate-100 pt-5">
 
                 <div class="flex items-center justify-between">
-
-                    <div>
-
-                        <p class="text-[9px] font-black uppercase
-                                  tracking-widest text-slate-400">
-
-                            Cuenta del mes
-
-                        </p>
-
-                        <p id="periodo-actual"
-                           class="text-xs font-bold text-slate-500 mt-1">
-                            —
-                        </p>
-
-                    </div>
-
-                    <div class="text-2xl">
-                        💶
-                    </div>
-
-                </div>
-
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-
-
-                    <!-- CUOTA -->
-                    <div class="bg-slate-50 rounded-2xl p-5">
-
-                        <p class="text-[8px] font-black uppercase
-                                  tracking-widest text-slate-400">
-
-                            Cuota mensual
-
-                        </p>
-
-                        <p id="importe-cuota"
-                           class="text-2xl font-black mt-2">
-
-                            20,00 €
-
-                        </p>
-
-                    </div>
-
-
-                    <!-- BAR -->
-                    <div class="bg-emerald-50 rounded-2xl p-5">
-
-                        <p class="text-[8px] font-black uppercase
-                                  tracking-widest text-emerald-600">
-
-                            Consumos del bar
-
-                        </p>
-
-                        <p id="total-bar"
-                           class="text-2xl font-black text-emerald-600 mt-2">
-
-                            0,00 €
-
-                        </p>
-
-                    </div>
-
-                </div>
-
-
-                <!-- TOTAL -->
-                <div class="mt-4 bg-slate-900 rounded-2xl p-5
-                            text-white flex items-center justify-between">
-
-                    <div>
-
-                        <p class="text-[8px] font-black uppercase
-                                  tracking-widest text-slate-400">
-
-                            Total a pagar
-
-                        </p>
-
-                        <p class="text-xs font-bold text-slate-400 mt-1">
-                            Cuota + consumos
-                        </p>
-
-                    </div>
-
-                    <span id="total-mes"
-                          class="text-2xl md:text-3xl font-black">
-
-                        20,00 €
-
+                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                        Nuevo consumo
                     </span>
 
+                    <span id="total-seleccion"
+                          class="text-xl font-black">
+                        0,00 €
+                    </span>
                 </div>
 
-            </section>
+                <button id="btn-registrar"
+                        onclick="registrarSeleccion()"
+                        disabled
+                        class="w-full mt-4 py-4 bg-slate-900 text-white rounded-2xl
+                               text-[10px] font-black uppercase tracking-widest
+                               disabled:opacity-40 disabled:cursor-not-allowed
+                               hover:bg-slate-800 transition">
+                    Registrar consumo
+                </button>
+            </div>
+        </section>
 
+        <!-- HISTÓRICO -->
+        <section class="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-sm">
 
-            <!-- CONSUMOS -->
-            <section class="bg-white rounded-[2rem] p-6 md:p-8
-                            border border-slate-100 shadow-sm">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                        Mis consumos
+                    </p>
+                    <p id="texto-periodo-historico"
+                       class="text-xs font-bold text-slate-500 mt-1">
+                        Este mes
+                    </p>
+                </div>
+                <div class="text-2xl">📋</div>
+            </div>
 
-                <div class="flex items-center justify-between">
+            <div id="lista-consumos" class="mt-5">
+                <div class="bg-slate-50 rounded-2xl p-6 text-center text-xs font-bold text-slate-400">
+                    Cargando...
+                </div>
+            </div>
+        </section>
 
-                    <div>
+        <!-- DATOS -->
+        <section class="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-sm">
 
-                        <p class="text-[9px] font-black uppercase
-                                  tracking-widest text-slate-400">
+            <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                Mi información
+            </p>
 
-                            Mis consumos
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
 
-                        </p>
-
-                        <p class="text-xs font-bold text-slate-500 mt-1">
-                            Este mes
-                        </p>
-
-                    </div>
-
-                    <div class="text-2xl">
-                        🍺
-                    </div>
-
+                <div class="bg-slate-50 rounded-2xl p-4">
+                    <p class="text-[8px] font-black uppercase text-slate-400">Email</p>
+                    <p id="email-socio" class="text-sm font-bold mt-1 break-all">—</p>
                 </div>
 
-
-                <div id="lista-consumos"
-                     class="mt-5">
-
-                    <div class="bg-slate-50 rounded-2xl p-6 text-center">
-
-                        <p class="text-sm font-black text-slate-700">
-                            Todavía no hay consumos
-                        </p>
-
-                        <p class="text-xs text-slate-400 font-bold mt-1">
-                            Cuando registremos el sistema del bar,
-                            aparecerán aquí.
-                        </p>
-
-                    </div>
-
+                <div class="bg-slate-50 rounded-2xl p-4">
+                    <p class="text-[8px] font-black uppercase text-slate-400">Estado</p>
+                    <p id="estado-socio" class="text-sm font-black mt-1">—</p>
                 </div>
 
-            </section>
+            </div>
+        </section>
 
-
-            <!-- INFORMACIÓN -->
-            <section class="bg-white rounded-[2rem] p-6 md:p-8
-                            border border-slate-100 shadow-sm">
-
-                <p class="text-[9px] font-black uppercase
-                          tracking-widest text-slate-400">
-
-                    Mi información
-
-                </p>
-
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
-
-                    <div class="bg-slate-50 rounded-2xl p-4">
-
-                        <p class="text-[8px] font-black uppercase text-slate-400">
-                            Email
-                        </p>
-
-                        <p id="email-socio"
-                           class="text-sm font-bold mt-1 break-all">
-                            —
-                        </p>
-
-                    </div>
-
-
-                    <div class="bg-slate-50 rounded-2xl p-4">
-
-                        <p class="text-[8px] font-black uppercase text-slate-400">
-                            Estado
-                        </p>
-
-                        <p id="estado-socio"
-                           class="text-sm font-black mt-1">
-                            —
-                        </p>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-        </div>
-
-    </main>
-
+    </div>
+</main>
 
 <script>
-
-    /* =========================================================
-       CONFIGURACIÓN SUPABASE
-       ========================================================= */
+    // ============================================================
+    // SUPABASE
+    // ============================================================
 
     const SB_URL = "https://xegikxovbjttailnassr.supabase.co";
 
-    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhlZ2lreG92Ymp0dGFpbG5hc3NyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4MDA1OTMsImV4cCI6MjA5MzM3NjU5M30.tufFxLYUJ8wdDsFtWW4wL7Z1w3TMeUw3CRbNkHSp58w";
+    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzIiwicmVmIjoieGVnaWt4b3Ziam10YWlsbmFzc3IiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc3NzgwMDU5MywiZXhwIjoyMDkzMzc2NTkzfQ.tufFxLYUJW8wdDsFtWW4wL7Z1w3TMeUw3CRbNkHSp58w";
 
-    const supabaseClient = supabase.createClient(
-        SB_URL,
-        SB_KEY
-    );
+    const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
 
-    /* =========================================================
-       ELEMENTOS
-       ========================================================= */
+    // ============================================================
+    // ESTADO
+    // ============================================================
 
-    const pantallaCargando =
-        document.getElementById('pantalla-cargando');
-
-    const pantallaError =
-        document.getElementById('pantalla-error');
-
-    const contenidoSocio =
-        document.getElementById('contenido-socio');
-
-    const mensajeError =
-        document.getElementById('mensaje-error');
+    let numeroSocioActual = null;
+    let productos = [];
+    let cantidades = {};
 
 
-    /* =========================================================
-       UTILIDADES
-       ========================================================= */
+    // ============================================================
+    // UTILIDADES
+    // ============================================================
 
-    function mostrarError(mensaje) {
-
-        console.error('SOCIO.HTML:', mensaje);
-
-        pantallaCargando.classList.add('hidden');
-
-        contenidoSocio.classList.add('hidden');
-
-        mensajeError.textContent = mensaje;
-
-        pantallaError.classList.remove('hidden');
-    }
-
-
-    function formatearEuros(valor) {
-
-        const numero = Number(valor) || 0;
-
-        return numero.toLocaleString('es-ES', {
+    function euros(valor) {
+        return (Number(valor) || 0).toLocaleString('es-ES', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         }) + ' €';
     }
 
+    function escapeHtml(text) {
+        return String(text ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
 
-    function obtenerPeriodoActual() {
+    function periodoActual() {
+        const ahora = new Date();
 
+        return ahora.toISOString().slice(0, 7);
+    }
+
+    function periodoLegible() {
         const ahora = new Date();
 
         return ahora.toLocaleDateString('es-ES', {
@@ -432,19 +315,55 @@
         });
     }
 
+    function mostrarToast(mensaje, tipo = 'info') {
 
-    /* =========================================================
-       COMPROBAR ACCESO
-       ========================================================= */
+        const colores = {
+            success: 'bg-emerald-600',
+            error: 'bg-rose-600',
+            info: 'bg-slate-900'
+        };
+
+        const toast = document.createElement('div');
+
+        toast.className =
+            `toast ${colores[tipo] || colores.info}
+             text-white px-4 py-3 rounded-2xl shadow-xl
+             text-xs font-bold`;
+
+        toast.textContent = mensaje;
+
+        document.getElementById('toast-container').appendChild(toast);
+
+        setTimeout(() => {
+            toast.remove();
+        }, 4000);
+    }
+
+    function mostrarError(mensaje) {
+
+        console.error('SOCIO:', mensaje);
+
+        document.getElementById('pantalla-cargando')
+            .classList.add('hidden');
+
+        document.getElementById('contenido-socio')
+            .classList.add('hidden');
+
+        document.getElementById('mensaje-error')
+            .textContent = mensaje;
+
+        document.getElementById('pantalla-error')
+            .classList.remove('hidden');
+    }
+
+
+    // ============================================================
+    // ACCESO
+    // ============================================================
 
     async function comprobarAcceso() {
 
         console.log('SOCIO: comprobando sesión...');
-
-
-        /*
-         * 1. Comprobamos que existe una sesión.
-         */
 
         const {
             data: { session },
@@ -453,44 +372,25 @@
 
 
         if (sessionError) {
-
             mostrarError(
-                'No se ha podido comprobar la sesión: ' +
+                'Error al comprobar la sesión: ' +
                 sessionError.message
             );
-
             return;
         }
 
 
-        /*
-         * Si no hay sesión, volvemos al login.
-         */
-
         if (!session) {
-
-            console.log(
-                'SOCIO: no existe sesión. Volviendo al login.'
-            );
-
             window.location.replace('index.html');
-
             return;
         }
 
 
         console.log(
-            'SOCIO: sesión encontrada:',
+            'SOCIO: usuario autenticado:',
             session.user.email
         );
 
-
-        /*
-         * 2. Buscamos la vinculación del usuario.
-         *
-         * La RLS de usuarios_socios permite que cada usuario
-         * consulte únicamente su propio registro.
-         */
 
         const {
             data,
@@ -502,18 +402,10 @@
             .single();
 
 
-        /*
-         * IMPORTANTE:
-         *
-         * NO hacemos signOut() si hay un error.
-         *
-         * Así evitamos el bucle que teníamos antes.
-         */
-
         if (rolError) {
 
             console.error(
-                'SOCIO: error consultando usuarios_socios:',
+                'SOCIO: error usuarios_socios:',
                 rolError
             );
 
@@ -527,277 +419,565 @@
 
 
         if (!data) {
-
             mostrarError(
                 'Tu cuenta no está vinculada a ningún socio.'
             );
-
             return;
         }
 
-
-        console.log(
-            'SOCIO: vinculación encontrada:',
-            data
-        );
-
-
-        /*
-         * 3. Comprobamos que esté activo.
-         */
 
         if (!data.activo) {
-
             mostrarError(
-                'Tu acceso está desactivado. ' +
-                'Contacta con la asociación.'
+                'Tu acceso está desactivado. Contacta con la asociación.'
             );
-
             return;
         }
 
-
-        /*
-         * 4. Un administrador no debe utilizar esta página.
-         */
 
         if (data.rol === 'admin') {
-
-            console.log(
-                'SOCIO: usuario admin. Volviendo al panel.'
-            );
-
             window.location.replace('index.html');
-
             return;
         }
 
-
-        /*
-         * 5. Solo aceptamos rol socio.
-         */
 
         if (data.rol !== 'socio') {
-
             mostrarError(
-                'Tu cuenta no tiene un rol válido.'
+                'Tu cuenta no tiene un rol de socio válido.'
             );
-
             return;
         }
 
 
-        /*
-         * 6. El socio debe tener número de socio.
-         */
-
-        if (data.num_socio === null ||
-            data.num_socio === undefined) {
-
+        if (
+            data.num_socio === null ||
+            data.num_socio === undefined
+        ) {
             mostrarError(
                 'Tu usuario no tiene asignado un número de socio.'
             );
-
             return;
         }
 
 
-        /*
-         * 7. Cargamos sus datos.
-         */
+        numeroSocioActual = data.num_socio;
 
-        await cargarDatosSocio(
-            data.num_socio,
+        await cargarFichaSocio(
+            numeroSocioActual,
             session.user.email
         );
+
+        await cargarProductos();
+
+        await cargarConsumos();
+
+
+        document.getElementById('pantalla-cargando')
+            .classList.add('hidden');
+
+        document.getElementById('contenido-socio')
+            .classList.remove('hidden');
     }
 
 
-    /* =========================================================
-       CARGAR DATOS DEL SOCIO
-       ========================================================= */
+    // ============================================================
+    // FICHA
+    // ============================================================
 
-    async function cargarDatosSocio(
-        numSocio,
-        emailUsuario
-    ) {
-
-        console.log(
-            'SOCIO: cargando socio nº',
-            numSocio
-        );
-
+    async function cargarFichaSocio(numSocio, emailUsuario) {
 
         const {
             data: socio,
             error
         } = await supabaseClient
             .from('socios')
-            .select(`
-                num_socio,
-                nombre,
-                apellidos,
-                email,
-                estado,
-                cuota
-            `)
+            .select('num_socio, nombre, apellidos, email, estado')
             .eq('num_socio', numSocio)
             .single();
 
 
         if (error) {
-
-            console.error(
-                'SOCIO: error cargando ficha:',
-                error
-            );
-
             mostrarError(
                 'No se ha podido cargar tu ficha: ' +
                 error.message
             );
-
             return;
         }
 
 
         if (!socio) {
-
             mostrarError(
-                'No se ha encontrado la ficha del socio nº ' +
-                numSocio + '.'
+                'No se ha encontrado tu ficha de socio.'
             );
+            return;
+        }
+
+
+        document.getElementById('nombre-socio').textContent =
+            `${socio.nombre || ''} ${socio.apellidos || ''}`.trim();
+
+        document.getElementById('numero-socio').textContent =
+            socio.num_socio;
+
+        document.getElementById('email-socio').textContent =
+            socio.email || emailUsuario || '—';
+
+        document.getElementById('estado-socio').textContent =
+            socio.estado || '—';
+
+        document.getElementById('periodo-actual').textContent =
+            periodoLegible();
+
+        document.getElementById('texto-periodo-historico').textContent =
+            periodoLegible();
+    }
+
+
+    // ============================================================
+    // PRODUCTOS
+    // ============================================================
+
+    async function cargarProductos() {
+
+        const {
+            data,
+            error
+        } = await supabaseClient
+            .from('productos_bar')
+            .select('id, nombre, precio, activo')
+            .eq('activo', true)
+            .order('nombre');
+
+
+        if (error) {
+
+            console.error(
+                'SOCIO: error productos_bar:',
+                error
+            );
+
+            document.getElementById('lista-productos').innerHTML = `
+                <div class="bg-rose-50 rounded-2xl p-5 text-center">
+                    <p class="text-xs font-black text-rose-600">
+                        No se han podido cargar los productos.
+                    </p>
+                    <p class="text-[10px] text-rose-400 mt-1">
+                        ${escapeHtml(error.message)}
+                    </p>
+                </div>
+            `;
 
             return;
         }
 
 
-        console.log(
-            'SOCIO: ficha cargada correctamente:',
-            socio
-        );
+        productos = data || [];
 
 
-        /* =====================================================
-           DATOS PERSONALES
-           ===================================================== */
+        if (productos.length === 0) {
 
-        document.getElementById(
-            'nombre-socio'
-        ).textContent =
-            `${socio.nombre || ''} ${socio.apellidos || ''}`.trim();
+            document.getElementById('lista-productos').innerHTML = `
+                <div class="bg-slate-50 rounded-2xl p-6 text-center">
+                    <p class="text-sm font-black text-slate-700">
+                        No hay productos disponibles
+                    </p>
+                    <p class="text-xs text-slate-400 mt-1">
+                        El bar todavía no tiene productos activos.
+                    </p>
+                </div>
+            `;
 
-
-        document.getElementById(
-            'numero-socio'
-        ).textContent =
-            socio.num_socio;
-
-
-        document.getElementById(
-            'email-socio'
-        ).textContent =
-            socio.email || emailUsuario || '—';
+            return;
+        }
 
 
-        document.getElementById(
-            'estado-socio'
-        ).textContent =
-            socio.estado || '—';
+        productos.forEach(producto => {
+            cantidades[producto.id] = 0;
+        });
 
 
-        /* =====================================================
-           CUOTA
-           ===================================================== */
-
-        /*
-         * Para este proyecto la cuota mensual es 20 €.
-         *
-         * Más adelante podemos utilizar directamente
-         * socios.cuota si quieres que pueda variar por socio.
-         */
-
-        const cuota = 20;
-
-
-        document.getElementById(
-            'importe-cuota'
-        ).textContent =
-            formatearEuros(cuota);
-
-
-        /* =====================================================
-           PERIODO
-           ===================================================== */
-
-        document.getElementById(
-            'periodo-actual'
-        ).textContent =
-            obtenerPeriodoActual();
-
-
-        /* =====================================================
-           CONSUMOS
-           ===================================================== */
-
-        /*
-         * TODAVÍA NO consultamos consumos_socios.
-         *
-         * Primero queremos comprobar que el acceso funciona.
-         *
-         * En el siguiente paso conectaremos aquí:
-         *
-         * consumos_socios
-         *      ↓
-         * num_socio
-         *      ↓
-         * productos_bar
-         *      ↓
-         * total mensual
-         */
-
-        const totalBar = 0;
-
-
-        document.getElementById(
-            'total-bar'
-        ).textContent =
-            formatearEuros(totalBar);
-
-
-        /* =====================================================
-           TOTAL
-           ===================================================== */
-
-        const totalMes = cuota + totalBar;
-
-
-        document.getElementById(
-            'total-mes'
-        ).textContent =
-            formatearEuros(totalMes);
-
-
-        /* =====================================================
-           MOSTRAR PÁGINA
-           ===================================================== */
-
-        pantallaCargando.classList.add('hidden');
-
-        pantallaError.classList.add('hidden');
-
-        contenidoSocio.classList.remove('hidden');
-
-
-        console.log(
-            'SOCIO: página cargada correctamente.'
-        );
+        renderizarProductos();
     }
 
 
-    /* =========================================================
-       CERRAR SESIÓN
-       ========================================================= */
+    function renderizarProductos() {
+
+        const contenedor =
+            document.getElementById('lista-productos');
+
+
+        contenedor.innerHTML = productos.map(producto => {
+
+            const cantidad =
+                cantidades[producto.id] || 0;
+
+            return `
+                <div class="border border-slate-100 rounded-2xl p-4
+                            flex items-center justify-between gap-4">
+
+                    <div class="min-w-0">
+
+                        <p class="font-black text-sm truncate">
+                            ${escapeHtml(producto.nombre)}
+                        </p>
+
+                        <p class="text-xs font-bold text-slate-400 mt-1">
+                            ${euros(producto.precio)} / unidad
+                        </p>
+
+                    </div>
+
+                    <div class="flex items-center gap-2 shrink-0">
+
+                        <button
+                            class="qty-btn bg-slate-100 text-slate-700
+                                   hover:bg-slate-200"
+                            onclick="cambiarCantidad(${producto.id}, -1)">
+                            −
+                        </button>
+
+                        <span
+                            id="cantidad-${producto.id}"
+                            class="w-8 text-center text-lg font-black">
+                            ${cantidad}
+                        </span>
+
+                        <button
+                            class="qty-btn bg-slate-900 text-white
+                                   hover:bg-slate-800"
+                            onclick="cambiarCantidad(${producto.id}, 1)">
+                            +
+                        </button>
+
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        actualizarTotalSeleccion();
+    }
+
+
+    function cambiarCantidad(productoId, cambio) {
+
+        const actual =
+            cantidades[productoId] || 0;
+
+        const nueva =
+            Math.max(0, actual + cambio);
+
+        cantidades[productoId] = nueva;
+
+
+        const elemento =
+            document.getElementById(`cantidad-${productoId}`);
+
+        if (elemento) {
+            elemento.textContent = nueva;
+        }
+
+
+        actualizarTotalSeleccion();
+    }
+
+
+    function actualizarTotalSeleccion() {
+
+        let total = 0;
+        let unidades = 0;
+
+
+        productos.forEach(producto => {
+
+            const cantidad =
+                cantidades[producto.id] || 0;
+
+            total +=
+                Number(producto.precio) * cantidad;
+
+            unidades += cantidad;
+        });
+
+
+        document.getElementById('total-seleccion')
+            .textContent = euros(total);
+
+
+        const boton =
+            document.getElementById('btn-registrar');
+
+        boton.disabled = unidades === 0;
+    }
+
+
+    // ============================================================
+    // REGISTRAR CONSUMOS
+    // ============================================================
+
+    async function registrarSeleccion() {
+
+        const seleccion =
+            productos
+                .filter(producto =>
+                    (cantidades[producto.id] || 0) > 0
+                )
+                .map(producto => ({
+                    producto,
+                    cantidad: cantidades[producto.id]
+                }));
+
+
+        if (seleccion.length === 0) {
+            mostrarToast(
+                'Selecciona al menos un producto.',
+                'info'
+            );
+            return;
+        }
+
+
+        const boton =
+            document.getElementById('btn-registrar');
+
+        boton.disabled = true;
+        boton.textContent = 'REGISTRANDO...';
+
+
+        try {
+
+            /*
+             * Registramos cada producto mediante la RPC segura.
+             *
+             * NO enviamos:
+             * - num_socio
+             * - precio_unitario
+             * - importe
+             *
+             * Todo eso lo calcula Supabase.
+             */
+
+            for (const item of seleccion) {
+
+                const {
+                    data,
+                    error
+                } = await supabaseClient
+                    .rpc('registrar_consumo', {
+                        p_producto_id: item.producto.id,
+                        p_cantidad: item.cantidad
+                    });
+
+
+                if (error) {
+                    throw new Error(
+                        `${item.producto.nombre}: ${error.message}`
+                    );
+                }
+
+
+                console.log(
+                    'SOCIO: consumo registrado:',
+                    data
+                );
+            }
+
+
+            mostrarToast(
+                'Consumo registrado correctamente.',
+                'success'
+            );
+
+
+            // Limpiamos cantidades.
+            productos.forEach(producto => {
+                cantidades[producto.id] = 0;
+            });
+
+
+            renderizarProductos();
+
+            await cargarConsumos();
+
+        } catch (error) {
+
+            console.error(
+                'SOCIO: error registrando consumo:',
+                error
+            );
+
+            mostrarToast(
+                'No se ha podido registrar: ' +
+                error.message,
+                'error'
+            );
+
+        } finally {
+
+            boton.textContent =
+                'Registrar consumo';
+
+            actualizarTotalSeleccion();
+        }
+    }
+
+
+    // ============================================================
+    // CONSUMOS DEL MES
+    // ============================================================
+
+    async function cargarConsumos() {
+
+        const periodo =
+            periodoActual();
+
+
+        const {
+            data,
+            error
+        } = await supabaseClient
+            .from('consumos_socios')
+            .select(`
+                id,
+                producto_id,
+                cantidad,
+                precio_unitario,
+                importe,
+                fecha,
+                periodo
+            `)
+            .eq('num_socio', numeroSocioActual)
+            .eq('periodo', periodo)
+            .order('fecha', { ascending: false });
+
+
+        if (error) {
+
+            console.error(
+                'SOCIO: error consumos_socios:',
+                error
+            );
+
+            document.getElementById('lista-consumos').innerHTML = `
+                <div class="bg-rose-50 rounded-2xl p-5 text-center">
+                    <p class="text-xs font-black text-rose-600">
+                        No se han podido cargar los consumos.
+                    </p>
+                    <p class="text-[10px] text-rose-400 mt-1">
+                        ${escapeHtml(error.message)}
+                    </p>
+                </div>
+            `;
+
+            return;
+        }
+
+
+        const consumos =
+            data || [];
+
+
+        const total =
+            consumos.reduce(
+                (suma, consumo) =>
+                    suma + Number(consumo.importe || 0),
+                0
+            );
+
+
+        document.getElementById('total-bar')
+            .textContent = euros(total);
+
+        document.getElementById('total-mes')
+            .textContent = euros(20 + total);
+
+
+        renderizarConsumos(consumos);
+    }
+
+
+    function renderizarConsumos(consumos) {
+
+        const contenedor =
+            document.getElementById('lista-consumos');
+
+
+        if (consumos.length === 0) {
+
+            contenedor.innerHTML = `
+                <div class="bg-slate-50 rounded-2xl p-6 text-center">
+                    <p class="text-sm font-black text-slate-700">
+                        Todavía no hay consumos este mes
+                    </p>
+                    <p class="text-xs text-slate-400 font-bold mt-1">
+                        Tus consumos aparecerán aquí.
+                    </p>
+                </div>
+            `;
+
+            return;
+        }
+
+
+        /*
+         * Para no depender de una relación FK adicional con
+         * productos_bar, mostramos el producto buscando su id
+         * en la lista de productos cargados.
+         */
+
+        contenedor.innerHTML =
+            consumos.map(consumo => {
+
+                const producto =
+                    productos.find(
+                        p => Number(p.id) === Number(consumo.producto_id)
+                    );
+
+                const nombre =
+                    producto
+                        ? producto.nombre
+                        : `Producto nº ${consumo.producto_id}`;
+
+                const fecha =
+                    new Date(consumo.fecha)
+                        .toLocaleString('es-ES', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        });
+
+
+                return `
+                    <div class="flex items-center justify-between
+                                gap-4 py-4 border-b border-slate-100 last:border-0">
+
+                        <div class="min-w-0">
+
+                            <p class="font-black text-sm truncate">
+                                ${escapeHtml(nombre)}
+                            </p>
+
+                            <p class="text-[10px] font-bold text-slate-400 mt-1">
+                                ${consumo.cantidad} ×
+                                ${euros(consumo.precio_unitario)}
+                                · ${fecha}
+                            </p>
+
+                        </div>
+
+                        <p class="font-black text-sm shrink-0">
+                            ${euros(consumo.importe)}
+                        </p>
+
+                    </div>
+                `;
+
+            }).join('');
+    }
+
+
+    // ============================================================
+    // CERRAR SESIÓN
+    // ============================================================
 
     async function cerrarSesion() {
 
@@ -805,7 +985,6 @@
             document.getElementById('btn-salir');
 
         boton.disabled = true;
-
         boton.textContent = 'Saliendo...';
 
 
@@ -821,12 +1000,12 @@
             );
 
             boton.disabled = false;
-
             boton.textContent = 'Salir';
 
-            mostrarError(
+            mostrarToast(
                 'No se ha podido cerrar la sesión: ' +
-                error.message
+                error.message,
+                'error'
             );
 
             return;
@@ -837,9 +1016,9 @@
     }
 
 
-    /* =========================================================
-       INICIO
-       ========================================================= */
+    // ============================================================
+    // INICIO
+    // ============================================================
 
     window.addEventListener(
         'load',
