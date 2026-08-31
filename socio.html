@@ -721,8 +721,8 @@
                     (cantidades[producto.id] || 0) > 0
                 )
                 .map(producto => ({
-                    producto,
-                    cantidad: cantidades[producto.id]
+                    producto_id: Number(producto.id),
+                    cantidad: Number(cantidades[producto.id])
                 }));
 
 
@@ -745,49 +745,50 @@
         try {
 
             /*
-             * Registramos cada producto mediante la RPC segura.
+             * Enviamos TODOS los productos seleccionados en una
+             * sola llamada a Supabase.
              *
-             * NO enviamos:
-             * - num_socio
-             * - precio_unitario
-             * - importe
+             * Solo enviamos:
+             *   - producto_id
+             *   - cantidad
              *
-             * Todo eso lo calcula Supabase.
+             * La RPC calcula en el servidor:
+             *   - num_socio
+             *   - precio_unitario
+             *   - importe
+             *   - fecha
+             *   - periodo
              */
 
-            for (const item of seleccion) {
-
-                const {
-                    data,
-                    error
-                } = await supabaseClient
-                    .rpc('registrar_consumo', {
-                        p_producto_id: item.producto.id,
-                        p_cantidad: item.cantidad
-                    });
+            const {
+                data,
+                error
+            } = await supabaseClient
+                .rpc('registrar_consumos', {
+                    p_consumos: seleccion
+                });
 
 
-                if (error) {
-                    throw new Error(
-                        `${item.producto.nombre}: ${error.message}`
-                    );
-                }
-
-
-                console.log(
-                    'SOCIO: consumo registrado:',
-                    data
-                );
+            if (error) {
+                throw new Error(error.message);
             }
 
 
+            console.log(
+                'SOCIO: consumos registrados:',
+                data
+            );
+
+
             mostrarToast(
-                'Consumo registrado correctamente.',
+                seleccion.length === 1
+                    ? 'Consumo registrado correctamente.'
+                    : 'Consumos registrados correctamente.',
                 'success'
             );
 
 
-            // Limpiamos cantidades.
+            // Limpiamos las cantidades después de guardar.
             productos.forEach(producto => {
                 cantidades[producto.id] = 0;
             });
@@ -795,12 +796,14 @@
 
             renderizarProductos();
 
+            // Recargamos el histórico y el total mensual.
             await cargarConsumos();
+
 
         } catch (error) {
 
             console.error(
-                'SOCIO: error registrando consumo:',
+                'SOCIO: error registrando consumos:',
                 error
             );
 
@@ -894,7 +897,7 @@
     }
 
 
-    function renderizarConsumos(consumos) {
+    async function renderizarConsumos(consumos) {
 
         const contenedor =
             document.getElementById('lista-consumos');
@@ -918,23 +921,54 @@
 
 
         /*
-         * Para no depender de una relación FK adicional con
-         * productos_bar, mostramos el producto buscando su id
-         * en la lista de productos cargados.
+         * Obtenemos los nombres de los productos utilizados.
+         *
+         * No dependemos de que estén activos actualmente:
+         * un producto puede haber sido desactivado después de
+         * realizarse un consumo y su histórico debe conservar
+         * igualmente el registro.
          */
+
+        const idsProducto = [
+            ...new Set(
+                consumos.map(
+                    consumo => Number(consumo.producto_id)
+                )
+            )
+        ];
+
+
+        let nombresProductos = {};
+
+
+        if (idsProducto.length > 0) {
+
+            const {
+                data: productosHistoricos,
+                error: productosError
+            } = await supabaseClient
+                .from('productos_bar')
+                .select('id, nombre')
+                .in('id', idsProducto);
+
+
+            if (!productosError && productosHistoricos) {
+
+                productosHistoricos.forEach(producto => {
+                    nombresProductos[producto.id] =
+                        producto.nombre;
+                });
+            }
+        }
+
 
         contenedor.innerHTML =
             consumos.map(consumo => {
 
-                const producto =
-                    productos.find(
-                        p => Number(p.id) === Number(consumo.producto_id)
-                    );
-
                 const nombre =
-                    producto
-                        ? producto.nombre
-                        : `Producto nº ${consumo.producto_id}`;
+                    nombresProductos[consumo.producto_id]
+                    || `Producto nº ${consumo.producto_id}`;
+
 
                 const fecha =
                     new Date(consumo.fecha)
