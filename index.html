@@ -796,7 +796,14 @@
             btn.innerText = "Entrar al Panel";
             btn.disabled = false;
         }
-        else { document.getElementById('seccion-login').classList.add('hidden'); inicializarApp(); }
+        else {
+    const esAdmin = await comprobarRolYRedirigir();
+
+    if (esAdmin) {
+        document.getElementById('seccion-login').classList.add('hidden');
+        inicializarApp();
+    }
+}
     });
 
     async function comprobarRolYRedirigir() {
