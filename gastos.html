@@ -69,6 +69,14 @@
             <div class="grid grid-cols-2 lg:grid-cols-1 gap-4" id="dashboard-mini"></div>
         </div>
 
+        <!-- NUEVA: GASTO MEDIO POR MES -->
+        <div class="card-dash overflow-hidden">
+            <h3 class="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">Gasto Medio por Mes</h3>
+            <div class="h-48 sm:h-64">
+                <canvas id="chartMedia"></canvas>
+            </div>
+        </div>
+
         <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col gap-3">
             <input type="text" id="buscar-text" oninput="renderizarTodo()" placeholder="Buscar concepto u observaciones..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl outline-none text-sm font-medium">
             <div class="grid grid-cols-2 gap-2">
@@ -156,6 +164,7 @@
         let cacheGastos = [];
         let estadoOrden = { columna: 'mes', direccion: 'desc' };
         let miGrafico = null;
+        let miGraficoMedia = null;
 
         const mesesMapa = { 'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4, 'mayo': 5, 'junio': 6, 'julio': 7, 'agosto': 8, 'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12 };
         const colores = { 'ALQUILER': '#fee2e2', 'LUZ': '#fef3c7', 'AGUA': '#e0f2fe', 'AGENCIA': '#f0fdf4', 'MATERIAL': '#f5f3ff', 'OTROS': '#f1f5f9' };
@@ -267,6 +276,64 @@
                         maintainAspectRatio: false, 
                         plugins: { legend: { display: false } },
                         scales: { y: { beginAtZero: true, ticks: { font: { size: 9 } } }, x: { ticks: { font: { size: 8 } } } }
+                    }
+                });
+            }
+
+            // --- GASTO MEDIO POR MES ---
+            const conteo = {};
+            datos.forEach(g => { conteo[g.mes] = (conteo[g.mes] || 0) + 1; });
+            const medias = etiquetas.map(e => acumulado[e] / conteo[e]);
+            const totalGeneral = datos.reduce((acc, g) => acc + Number(g.importe), 0);
+            const mediaGlobal = datos.length ? totalGeneral / datos.length : 0;
+
+            if (miGraficoMedia) miGraficoMedia.destroy();
+            const ctxMedia = document.getElementById('chartMedia');
+            if (ctxMedia) {
+                miGraficoMedia = new Chart(ctxMedia, {
+                    type: 'bar',
+                    data: {
+                        labels: etiquetas,
+                        datasets: [
+                            {
+                                label: 'Gasto medio (€)',
+                                data: medias,
+                                backgroundColor: '#0f172a',
+                                borderRadius: 8,
+                                order: 2
+                            },
+                            {
+                                type: 'line',
+                                label: 'Media global (€)',
+                                data: etiquetas.map(() => mediaGlobal),
+                                borderColor: '#f43f5e',
+                                borderDash: [6, 6],
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                fill: false,
+                                order: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: true, labels: { font: { size: 9 } } },
+                            tooltip: {
+                                callbacks: {
+                                    label: (c) => `${c.dataset.label}: ${c.parsed.y.toFixed(2)}€`,
+                                    afterBody: (items) => {
+                                        const mes = items[0].label;
+                                        return conteo[mes] ? `(${conteo[mes]} gastos en el mes)` : '';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, ticks: { font: { size: 9 } } },
+                            x: { ticks: { font: { size: 8 } } }
+                        }
                     }
                 });
             }
