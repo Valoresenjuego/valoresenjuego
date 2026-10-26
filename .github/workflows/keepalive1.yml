@@ -1,0 +1,27 @@
+name: Mantener Supabase activo
+
+on:
+  schedule:
+    - cron: "17 3 * * *"   # todos los días a las 03:17 UTC (04:17/05:17 en España)
+  workflow_dispatch:        # permite lanzarlo a mano para probar
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Insertar fila de prueba
+        run: |
+          curl -sS --fail -X POST "${{ secrets.SUPABASE_URL }}/rest/v1/keepalive" \
+            -H "apikey: ${{ secrets.SUPABASE_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{}'
+
+      - name: Esperar unos segundos
+        run: sleep 5
+
+      - name: Borrar filas de prueba
+        run: |
+          curl -sS --fail -X DELETE "${{ secrets.SUPABASE_URL }}/rest/v1/keepalive?id=gt.0" \
+            -H "apikey: ${{ secrets.SUPABASE_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_KEY }}"
