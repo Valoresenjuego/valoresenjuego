@@ -77,13 +77,17 @@
             </div>
         </div>
 
+        <div class="card-dash overflow-hidden">
+            <h3 class="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">Total por Categoría</h3>
+            <div id="totales-categoria" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2"></div>
+        </div>
+
         <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col gap-3">
             <input type="text" id="buscar-text" oninput="renderizarTodo()" placeholder="Buscar concepto u observaciones..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl outline-none text-sm font-medium">
             <div class="grid grid-cols-2 gap-2">
                 <select id="filtro-mes" onchange="renderizarTodo()" class="w-full p-4 bg-slate-50 rounded-2xl outline-none text-[10px] font-black uppercase border-none"></select>
                 <select id="filtro-categoria" onchange="renderizarTodo()" class="w-full p-4 bg-slate-50 rounded-2xl outline-none text-[10px] font-black uppercase border-none">
                     <option value="TODAS">Categorías</option>
-                    <option value="ALQUILER">ALQUILER</option><option value="LUZ">LUZ</option><option value="AGUA">AGUA</option><option value="AGENCIA">AGENCIA</option><option value="MATERIAL">MATERIAL</option><option value="OTROS">OTROS</option>
                 </select>
             </div>
         </div>
@@ -124,9 +128,7 @@
 
                 <div class="space-y-1">
                     <label class="text-[9px] font-black uppercase text-slate-400 ml-2">Categoría</label>
-                    <select id="g-concepto" required class="w-full p-4 bg-slate-50 rounded-2xl font-black text-sm border-none outline-none">
-                        <option value="ALQUILER">ALQUILER</option><option value="LUZ">LUZ</option><option value="AGUA">AGUA</option><option value="AGENCIA">AGENCIA</option><option value="MATERIAL">MATERIAL</option><option value="OTROS">OTROS</option>
-                    </select>
+                    <select id="g-concepto" required class="w-full p-4 bg-slate-50 rounded-2xl font-black text-sm border-none outline-none"></select>
                 </div>
 
                 <div class="space-y-1">
@@ -170,6 +172,33 @@
         const colores = { 'ALQUILER': '#fee2e2', 'LUZ': '#fef3c7', 'AGUA': '#e0f2fe', 'AGENCIA': '#f0fdf4', 'MATERIAL': '#f5f3ff', 'OTROS': '#f1f5f9' };
         const textoColores = { 'ALQUILER': '#991b1b', 'LUZ': '#92400e', 'AGUA': '#075985', 'AGENCIA': '#166534', 'MATERIAL': '#5b21b6', 'OTROS': '#475569' };
 
+        // Categorías base (siempre disponibles) + las que existan en la base de datos
+        const categoriasBase = ['ALQUILER', 'LUZ', 'AGUA', 'AGENCIA', 'MATERIAL', 'OTROS'];
+        const paletaExtra = [
+            ['#ffedd5', '#9a3412'], ['#fce7f3', '#9d174d'], ['#ccfbf1', '#115e59'],
+            ['#ede9fe', '#5b21b6'], ['#fef9c3', '#854d0e'], ['#dbeafe', '#1e40af'], ['#ecfccb', '#3f6212']
+        ];
+        function estiloCategoria(c) {
+            if (colores[c]) return { bg: colores[c], fg: textoColores[c] };
+            let h = 0; for (const ch of String(c)) h = (h * 31 + ch.charCodeAt(0)) % 997;
+            const [bg, fg] = paletaExtra[h % paletaExtra.length];
+            return { bg, fg };
+        }
+        function listaCategorias() {
+            return [...new Set([...categoriasBase, ...cacheGastos.map(g => g.concepto).filter(Boolean)])].sort();
+        }
+        function actualizarSelectoresCategoria() {
+            const cats = listaCategorias();
+            const f = document.getElementById('filtro-categoria');
+            const valF = f.value;
+            f.innerHTML = '<option value="TODAS">Categorías</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+            f.value = cats.includes(valF) ? valF : 'TODAS';
+            const m = document.getElementById('g-concepto');
+            const valM = m.value;
+            m.innerHTML = cats.map(c => `<option value="${c}">${c}</option>`).join('');
+            if (cats.includes(valM)) m.value = valM;
+        }
+
         async function validarAcceso() {
             const { data: { session }, error } = await supabaseClient.auth.getSession();
             if (error || !session) { window.location.href = 'index.html'; } 
@@ -197,6 +226,7 @@
             if (!error) { 
                 cacheGastos = data; 
                 actualizarSelectorMesesFiltro();
+                actualizarSelectoresCategoria();
                 ejecutarOrden('mes', true); 
             }
         }
@@ -225,7 +255,7 @@
             document.getElementById('tabla-gastos-body').innerHTML = filtrados.map(g => `
                 <tr class="hover:bg-slate-50 border-b border-slate-50">
                     <td data-label="Mes" class="px-6 py-4 font-extrabold text-slate-400 uppercase text-[10px]">${g.mes}</td>
-                    <td data-label="Concepto" class="px-6 py-4"><span class="concepto-tag" style="background:${colores[g.concepto]}; color:${textoColores[g.concepto]}">${g.concepto}</span></td>
+                    <td data-label="Concepto" class="px-6 py-4"><span class="concepto-tag" style="background:${estiloCategoria(g.concepto).bg}; color:${estiloCategoria(g.concepto).fg}">${g.concepto}</span></td>
                     <td data-label="Observaciones" class="px-6 py-4 text-xs text-slate-500 italic">${g.obs || '-'}</td>
                     <td data-label="Importe" class="px-6 py-4 font-black text-slate-900">${Number(g.importe).toFixed(2)}€</td>
                     <td data-label="Estado" class="px-6 py-4 text-center">
@@ -257,6 +287,22 @@
                     <p class="text-lg sm:text-2xl font-black text-slate-900">${totalPendiente.toFixed(2)}€</p>
                 </div>
             `;
+
+            const porCat = {};
+            datos.forEach(g => { porCat[g.concepto] = (porCat[g.concepto] || 0) + Number(g.importe); });
+            const totalFiltrado = datos.reduce((acc, g) => acc + Number(g.importe), 0);
+            document.getElementById('totales-categoria').innerHTML = Object.entries(porCat)
+                .sort((a, b) => b[1] - a[1])
+                .map(([c, v]) => {
+                    const st = estiloCategoria(c);
+                    return `<div class="flex justify-between items-center p-3 rounded-xl" style="background:${st.bg}; color:${st.fg}">
+                        <span class="text-[10px] font-black uppercase">${c}</span>
+                        <span class="text-sm font-black">${v.toFixed(2)}€</span>
+                    </div>`;
+                }).join('') + `<div class="flex justify-between items-center p-3 rounded-xl bg-slate-900 text-white">
+                    <span class="text-[10px] font-black uppercase">TOTAL</span>
+                    <span class="text-sm font-black">${totalFiltrado.toFixed(2)}€</span>
+                </div>`;
 
             const acumulado = {};
             datos.forEach(g => { acumulado[g.mes] = (acumulado[g.mes] || 0) + Number(g.importe); });
