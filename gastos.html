@@ -99,6 +99,7 @@
                         <th class="px-6 py-4">Observaciones</th>
                         <th onclick="ejecutarOrden('importe')" class="th-sort px-6 py-4">Importe <span id="icon-importe">↕</span></th>
                         <th class="px-6 py-4 w-32 text-center">Estado</th>
+                        <th onclick="ejecutarOrden('created_at')" class="th-sort px-6 py-4 text-center">Registrado <span id="icon-created_at">↕</span></th>
                         <th class="px-6 py-4 w-24 text-center">Acciones</th>
                     </tr>
                 </thead>
@@ -212,6 +213,16 @@
             cargarGastos();
         }
 
+        // Formatea created_at (timestamp de Supabase) en hora de España: "30/10/2026 · 09:15"
+        function formatearRegistro(ts) {
+            if (!ts) return '-';
+            const d = new Date(ts);
+            if (isNaN(d.getTime())) return '-';
+            const fecha = d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Madrid' });
+            const hora = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid' });
+            return `${fecha} · ${hora}`;
+        }
+
         function getValCron(t) {
             if(!t) return 0;
             const p = t.trim().toLowerCase().split(/\s+/);
@@ -272,6 +283,7 @@
                             ${g.estado}
                         </span>
                     </td>
+                    <td data-label="Registrado" class="px-6 py-4 text-center text-[10px] font-bold text-slate-500 whitespace-nowrap">${formatearRegistro(g.created_at)}</td>
                     <td class="acciones-cell px-6 py-4 text-center space-x-3">
                         <button onclick="editarGasto('${g.id}')" class="bg-slate-100 p-3 rounded-xl sm:bg-transparent sm:p-0 text-slate-400 hover:text-slate-900 transition-colors">✎</button>
                         <button onclick="eliminarGasto('${g.id}')" class="bg-rose-50 p-3 rounded-xl sm:bg-transparent sm:p-0 text-slate-300 hover:text-rose-600 transition-colors">✕</button>
@@ -343,8 +355,10 @@
                 estadoOrden.columna = col;
             }
             cacheGastos.sort((a, b) => {
-                let vA = col === 'mes' ? getValCron(a.mes) : parseFloat(a.importe);
-                let vB = col === 'mes' ? getValCron(b.mes) : parseFloat(b.importe);
+                const valor = (g) => col === 'mes' ? getValCron(g.mes)
+                    : col === 'created_at' ? (new Date(g.created_at).getTime() || 0)
+                    : parseFloat(g.importe);
+                const vA = valor(a), vB = valor(b);
                 return estadoOrden.direccion === 'asc' ? vA - vB : vB - vA;
             });
             renderizarTodo();
