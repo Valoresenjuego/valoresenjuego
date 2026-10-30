@@ -359,7 +359,10 @@
                     : col === 'created_at' ? (new Date(g.created_at).getTime() || 0)
                     : parseFloat(g.importe);
                 const vA = valor(a), vB = valor(b);
-                return estadoOrden.direccion === 'asc' ? vA - vB : vB - vA;
+                const diff = estadoOrden.direccion === 'asc' ? vA - vB : vB - vA;
+                if (diff !== 0) return diff;
+                // Desempate: dentro del mismo mes (o importe), el registrado más recientemente primero
+                return (new Date(b.created_at).getTime() || 0) - (new Date(a.created_at).getTime() || 0);
             });
             renderizarTodo();
         }
