@@ -303,6 +303,14 @@
                 <input type="number" step="0.01" id="pago-importe" value="20.00" class="w-full p-5 bg-slate-50 rounded-2xl font-black text-3xl text-center text-emerald-600 border-none outline-none">
             </div>
 
+            <div class="space-y-1">
+                <label class="text-[9px] font-black uppercase text-slate-400 ml-2">Método de pago</label>
+                <select id="pago-metodo" class="w-full p-5 bg-slate-50 rounded-2xl font-bold text-center border-none outline-none appearance-none">
+                    <option value="Efectivo">💶 Efectivo</option>
+                    <option value="Transferencia">🏦 Transferencia</option>
+                </select>
+            </div>
+
             <label class="flex items-center justify-between p-5 bg-indigo-50 rounded-[1.5rem] border border-indigo-100 cursor-pointer active:scale-95 transition-all">
                 <span class="text-[10px] font-black text-indigo-700 uppercase">Enviar confirmación Email</span>
                 <input type="checkbox" id="check-enviar-email" checked class="w-6 h-6 accent-indigo-600">
@@ -646,7 +654,9 @@
 
             const filasPagos = pagosDelAnio.map(p => `
                 <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-100">
-                    <span class="font-black text-[10px] uppercase text-slate-600">${escapeHtml(p.periodo)}</span>
+                    <span class="font-black text-[10px] uppercase text-slate-600">${escapeHtml(p.periodo)}
+                        <span class="text-slate-400 font-bold normal-case">· ${escapeHtml(p.metodo_pago || '—')}</span>
+                    </span>
                     <span class="font-black text-emerald-600">${escapeHtml(p.importe)}€</span>
                 </div>`).join('');
 
@@ -1045,6 +1055,7 @@
     function abrirPagoRapido(num, nom) {
         document.getElementById('pago-num-socio').value = num;
         document.getElementById('pago-socio-nombre').innerText = nom;
+        document.getElementById('pago-metodo').value = 'Efectivo';
         mostrarModal('modalPago');
     }
 
@@ -1141,6 +1152,7 @@
         const periodoMayusculas = periodoRaw.toUpperCase();
 
         const importe = document.getElementById('pago-importe').value;
+        const metodoPago = document.getElementById('pago-metodo').value; // "Efectivo" | "Transferencia"
         const enviarEmail = document.getElementById('check-enviar-email').checked;
 
         btn.innerText = "PROCESANDO...";
@@ -1154,6 +1166,7 @@
                     num_socio: parseInt(numSocio),
                     periodo: periodoMayusculas,
                     importe: parseFloat(importe),
+                    metodo_pago: metodoPago,
                     fecha_pago: new Date().toISOString()
                 }]);
 
@@ -1179,7 +1192,7 @@
                 }
             }
 
-            mostrarToast("Pago registrado como " + periodoMayusculas, 'success');
+            mostrarToast("Pago registrado como " + periodoMayusculas + " (" + metodoPago + ")", 'success');
             cerrarModal('modalPago');
             await inicializarApp();
 
@@ -1516,7 +1529,7 @@
         mostrarToast('Excel de socios exportado.', 'success');
     }
 
-    // --- NUEVA FUNCIÓN: exportar histórico completo de pagos (cuotas) ---
+    // --- Exportar histórico completo de pagos (cuotas) ---
     function exportarPagosExcel() {
         if (!listaPagos || listaPagos.length === 0) {
             mostrarToast("No hay pagos registrados para exportar.", 'info');
@@ -1534,6 +1547,7 @@
                 "SOCIO": mapaSocios[p.num_socio] || '(no encontrado)',
                 "PERIODO": p.periodo,
                 "IMPORTE (€)": Number(p.importe) || 0,
+                "MÉTODO": p.metodo_pago || '---',
                 "FECHA DE PAGO": p.fecha_pago ? new Date(p.fecha_pago).toLocaleDateString('es-ES') : '---'
             }));
 
@@ -1542,7 +1556,7 @@
         XLSX.utils.book_append_sheet(libro, hoja, "Pagos");
 
         hoja['!cols'] = [
-            {wch: 10}, {wch: 28}, {wch: 18}, {wch: 14}, {wch: 16}
+            {wch: 10}, {wch: 28}, {wch: 18}, {wch: 14}, {wch: 14}, {wch: 16}
         ];
 
         const fecha = new Date().toISOString().slice(0, 10);
